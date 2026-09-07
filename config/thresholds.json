@@ -1,0 +1,336 @@
+{
+  "kpis": {
+    "reflection_rate": {
+      "label": "Reflection Rate",
+      "unit": "%",
+      "mode": "higher_better",
+      "green": 90.0,
+      "amber": 75.0,
+      "help": "Reviews reflected / reviews submitted. Are submitted reviews actually going live?"
+    },
+    "order_submission_rate": {
+      "label": "Order Submission %",
+      "unit": "%",
+      "mode": "between",
+      "min": 90.0,
+      "max": 105.0,
+      "slack": 10.0,
+      "help": "Reviews submitted / net orders. Above 100% means more submissions than net orders, so check for double counting."
+    },
+    "cancellation_rate": {
+      "label": "Cancellation / Not-Delivered %",
+      "unit": "%",
+      "mode": "lower_better",
+      "green": 10.0,
+      "amber": 20.0,
+      "help": "Orders not marked 'Shipped - Delivered to Buyer', over total orders. This is the sheet's own Cancellation% definition."
+    },
+    "true_cancel_rate": {
+      "label": "True Cancelled %",
+      "unit": "%",
+      "mode": "lower_better",
+      "green": 3.0,
+      "amber": 7.0,
+      "help": "Only rows whose Amazon status is exactly 'Cancelled'."
+    },
+    "return_rate": {
+      "label": "Return Rate",
+      "unit": "%",
+      "mode": "lower_better",
+      "green": 5.0,
+      "amber": 10.0,
+      "help": "Orders with a return status, over total orders."
+    },
+    "delivery_rate": {
+      "label": "Delivery Rate",
+      "unit": "%",
+      "mode": "higher_better",
+      "green": 90.0,
+      "amber": 80.0,
+      "help": "Orders delivered to buyer, over total orders."
+    },
+    "seller_feedback_rate": {
+      "label": "Seller Feedback Rate",
+      "unit": "%",
+      "mode": "higher_better",
+      "green": 60.0,
+      "amber": 35.0,
+      "help": "Seller feedback given, over reviews submitted."
+    },
+    "checker_verified_rate": {
+      "label": "Checker Verified %",
+      "unit": "%",
+      "mode": "higher_better",
+      "green": 90.0,
+      "amber": 70.0,
+      "help": "Rows signed off by the checker, over reviews submitted. Low means a verification backlog."
+    },
+    "payment_done_rate": {
+      "label": "Payment Completion %",
+      "unit": "%",
+      "mode": "higher_better",
+      "green": 95.0,
+      "amber": 85.0,
+      "help": "Orders with payment marked Paid or Settled, over total orders."
+    },
+    "payment_pending_amt": {
+      "label": "Payment Pending",
+      "unit": "Rs",
+      "mode": "lower_better",
+      "green": 5000.0,
+      "amber": 25000.0,
+      "help": "Order value we still owe: payment neither Paid nor Cancelled."
+    },
+    "paid_unreflected_amt": {
+      "label": "Paid but Review Not Reflected",
+      "unit": "Rs",
+      "mode": "lower_better",
+      "green": 10000.0,
+      "amber": 50000.0,
+      "help": "Money already paid out where the review has not reflected. This is the main recovery exposure."
+    },
+    "paid_undelivered_amt": {
+      "label": "Paid but Not Delivered",
+      "unit": "Rs",
+      "mode": "lower_better",
+      "green": 5000.0,
+      "amber": 20000.0,
+      "help": "Money paid on orders that were cancelled or returned."
+    },
+    "unreconciled_amt": {
+      "label": "Unreconciled with Amazon",
+      "unit": "Rs",
+      "mode": "lower_better",
+      "green": 5000.0,
+      "amber": 25000.0,
+      "help": "Order value of rows with no Amazon Price captured."
+    },
+    "exception_rate": {
+      "label": "Rows with Exceptions %",
+      "unit": "%",
+      "mode": "lower_better",
+      "green": 10.0,
+      "amber": 25.0,
+      "help": "Share of orders tripping at least one audit rule."
+    },
+    "target_achievement": {
+      "label": "Target Achievement %",
+      "unit": "%",
+      "mode": "higher_better",
+      "green": 90.0,
+      "amber": 70.0,
+      "help": "Actual orders vs the Monthly Targets Report, per product."
+    }
+  },
+  "rules": {
+    "missing_mandatory": {
+      "label": "Mandatory field blank",
+      "severity": "red",
+      "enabled": true,
+      "group": "Data integrity",
+      "params": {},
+      "help": "Order ID, ASIN, intern name or order date is empty."
+    },
+    "duplicate_order_id": {
+      "label": "Duplicate Order ID",
+      "severity": "red",
+      "enabled": true,
+      "group": "Data integrity",
+      "params": {},
+      "help": "The same Amazon order ID appears on more than one row."
+    },
+    "future_order_date": {
+      "label": "Order date in the future",
+      "severity": "red",
+      "enabled": true,
+      "group": "Data integrity",
+      "params": {},
+      "help": "Order date is later than today."
+    },
+    "order_price_range": {
+      "label": "Order price outside expected range",
+      "severity": "amber",
+      "enabled": true,
+      "group": "Data integrity",
+      "params": {
+        "min": 150.0,
+        "max": 3000.0
+      },
+      "help": "Order price below the minimum or above the maximum. Catches typos and stray decimals."
+    },
+    "status_blank": {
+      "label": "Amazon status blank",
+      "severity": "amber",
+      "enabled": true,
+      "group": "Fulfilment",
+      "params": {
+        "days": 3
+      },
+      "help": "No Amazon status this many days after the order date."
+    },
+    "stuck_in_transit": {
+      "label": "Stuck in transit",
+      "severity": "amber",
+      "enabled": true,
+      "group": "Fulfilment",
+      "params": {
+        "days": 14
+      },
+      "help": "Still Shipped / Pending / Out for Delivery this many days after ordering."
+    },
+    "review_link_sla": {
+      "label": "Review not submitted within SLA",
+      "severity": "red",
+      "enabled": true,
+      "group": "Review pipeline",
+      "params": {
+        "days": 10
+      },
+      "help": "Order delivered but no review link this many days after the order date."
+    },
+    "reflect_sla": {
+      "label": "Review submitted but not reflected within SLA",
+      "severity": "amber",
+      "enabled": true,
+      "group": "Review pipeline",
+      "params": {
+        "days": 15
+      },
+      "help": "Review link present but reflection still false after this many days."
+    },
+    "reflected_without_link": {
+      "label": "Marked reflected without a review link",
+      "severity": "red",
+      "enabled": true,
+      "group": "Review pipeline",
+      "params": {},
+      "help": "Reflection is TRUE but there is no review link, so it cannot be verified."
+    },
+    "checker_pending": {
+      "label": "Checker sign-off pending",
+      "severity": "amber",
+      "enabled": true,
+      "group": "Review pipeline",
+      "params": {
+        "days": 20
+      },
+      "help": "Review submitted this many days ago and the checker has still not verified it."
+    },
+    "seller_feedback_missing": {
+      "label": "Seller feedback missing on a reflected order",
+      "severity": "amber",
+      "enabled": true,
+      "group": "Review pipeline",
+      "params": {},
+      "help": "Review reflected but no seller feedback recorded."
+    },
+    "payment_pending_age": {
+      "label": "Payment pending too long",
+      "severity": "red",
+      "enabled": true,
+      "group": "Money",
+      "params": {
+        "days": 15
+      },
+      "help": "Payment still not Paid or Settled this many days after the order date."
+    },
+    "payment_unknown": {
+      "label": "Payment status unrecognised or on hold",
+      "severity": "amber",
+      "enabled": true,
+      "group": "Money",
+      "params": {},
+      "help": "Payment text does not resolve to Paid, Pending or Cancelled."
+    },
+    "paid_not_reflected": {
+      "label": "Paid but review not reflected",
+      "severity": "red",
+      "enabled": true,
+      "group": "Money",
+      "params": {
+        "days": 15
+      },
+      "help": "Money paid out this many days ago and the review still has not reflected."
+    },
+    "paid_not_delivered": {
+      "label": "Paid but order not delivered",
+      "severity": "red",
+      "enabled": true,
+      "group": "Money",
+      "params": {},
+      "help": "Payment marked Paid on an order that was cancelled or returned."
+    },
+    "amazon_price_missing": {
+      "label": "Amazon price not captured",
+      "severity": "amber",
+      "enabled": true,
+      "group": "Money",
+      "params": {
+        "days": 7
+      },
+      "help": "Delivered order with no Amazon price this many days after ordering."
+    },
+    "amazon_price_gap": {
+      "label": "Order vs Amazon price mismatch",
+      "severity": "amber",
+      "enabled": true,
+      "group": "Money",
+      "params": {
+        "tolerance": 50.0
+      },
+      "help": "Absolute difference between order price and Amazon price exceeds the tolerance."
+    },
+    "return_no_signoff": {
+      "label": "Return without checker sign-off",
+      "severity": "red",
+      "enabled": true,
+      "group": "Returns",
+      "params": {},
+      "help": "Return status recorded but the return checker column is not OK."
+    },
+    "return_no_pickup": {
+      "label": "Return with no pickup partner",
+      "severity": "amber",
+      "enabled": true,
+      "group": "Returns",
+      "params": {},
+      "help": "Return status recorded but 'Return Pickup By' is blank."
+    },
+    "unknown_intern": {
+      "label": "Intern not on the roster",
+      "severity": "amber",
+      "enabled": true,
+      "group": "Interns",
+      "params": {},
+      "help": "Intern name in MAIN has no match in the Intern Report Manual roster."
+    },
+    "order_outside_tenure": {
+      "label": "Order outside the intern tenure",
+      "severity": "amber",
+      "enabled": true,
+      "group": "Interns",
+      "params": {
+        "grace_days": 7
+      },
+      "help": "Order date falls before joining or after leaving, beyond the grace period."
+    },
+    "not_in_amazon_report": {
+      "label": "Order ID missing from the Amazon report",
+      "severity": "amber",
+      "enabled": true,
+      "group": "Reconciliation",
+      "params": {},
+      "help": "Order ID in MAIN has no match in 'Amazon Order Report Pasting'."
+    }
+  },
+  "display": {
+    "green_hex": "#059669",
+    "amber_hex": "#D97706",
+    "red_hex": "#DC2626",
+    "neutral_hex": "#64748B",
+    "cache_ttl_minutes": 10,
+    "week_days": 7,
+    "currency_symbol": "Rs",
+    "intern_min_orders_for_grading": 5
+  }
+}
