@@ -1,5 +1,7 @@
 streamlit>=1.63.0
 Authlib>=1.3.2
+# Authlib treats httpx as optional, but its starlette_client (which st.login uses) imports it.
+httpx>=0.27
 pandas>=2.1.0
 numpy>=1.26.0
 plotly>=5.20.0
