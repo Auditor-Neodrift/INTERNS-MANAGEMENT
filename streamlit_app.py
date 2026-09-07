@@ -25,11 +25,17 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
+import auth  # noqa: E402
 import data as data_mod  # noqa: E402
 import settings_store  # noqa: E402
 import ui  # noqa: E402
 
 ui.inject_css()
+
+# ---------------------------------------------------------------------------
+# Nothing below this line runs until an allow-listed Google account signs in.
+# ---------------------------------------------------------------------------
+auth.require_login()
 
 # ---------------------------------------------------------------------------
 # Config lives in session state so edits on the Settings page apply everywhere
@@ -88,6 +94,9 @@ def sidebar(bundle) -> None:
         st.caption(f"Interns on roster: {len(bundle.roster):,}")
         st.link_button("Open Google Sheet", data_mod.sheet_url(),
                        width="stretch")
+
+        st.divider()
+        auth.sidebar_account()
 
         if bundle.warnings:
             st.divider()

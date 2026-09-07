@@ -139,6 +139,35 @@ after new KPIs or rules are added.
 
 ---
 
+## Access control
+
+The app is gated behind Google sign-in. Nothing loads — no data, no navigation
+— until an approved account signs in. Three addresses are allowed:
+
+- `auditorneodrift@gmail.com`
+- `neodriftoffice@gmail.com`
+- `admin@neodrift.in`
+
+The list lives in `src/auth.py`, so it is version-controlled and cannot be
+changed from inside the running app. Signing in with Google is not enough on
+its own: the address must also be on the list, or the visitor gets a refusal
+screen. Override the list per-deployment with an `ALLOWED_EMAILS` secret.
+
+**Setup (once).** Create an OAuth client in the
+[Google Cloud console](https://console.cloud.google.com/apis/credentials) →
+*Create credentials* → *OAuth client ID* → *Web application*, and register your
+redirect URI (`https://YOUR-APP.streamlit.app/oauth2callback`, and
+`http://localhost:8501/oauth2callback` for local runs). Then copy
+`.streamlit/secrets.toml.example` to `.streamlit/secrets.toml` locally, or paste
+its contents into Streamlit Cloud → app settings → **Secrets**, filling in the
+client ID, client secret and a random `cookie_secret`.
+
+While the Google consent screen is in *Testing*, each of the three accounts must
+also be added as a Test user.
+
+`.streamlit/secrets.toml` is gitignored — the real credentials are never
+committed.
+
 ## Running it locally
 
 ```bash
@@ -154,12 +183,13 @@ streamlit run streamlit_app.py
 1. Push this repository to GitHub.
 2. On [share.streamlit.io](https://share.streamlit.io) choose **New app**, pick
    the repo and branch, and set the main file to `streamlit_app.py`.
-3. Deploy. `requirements.txt` and `.streamlit/config.toml` are picked up
-   automatically.
+3. Add the `[auth]` secrets from **Access control** above, then deploy.
+   `requirements.txt` and `.streamlit/config.toml` are picked up automatically.
 
 The workbook must stay shared as **Anyone with the link → Viewer**; the app
 reads it through Google's public gviz endpoint, so there is no API key or
-service account to configure.
+service account needed for the sheet itself. The OAuth credentials above are
+only for signing users in.
 
 ### Pointing at a different workbook
 
@@ -190,6 +220,7 @@ src/
   audit.py                  the row-level rule engine
   settings_store.py         default limits, rules, load/save, grading
   ui.py                     responsive KPI cards, chips, charts, exports
+  auth.py                   Google sign-in gate and email allow-list
 app_pages/
   common.py                 cached audit runs and shared KPI blocks
   page_dashboard.py
