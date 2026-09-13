@@ -22,10 +22,11 @@ st.set_page_config(
     page_title="NEODRIFT Interns Audit",
     page_icon=":material/fact_check:",
     layout="wide",
-    initial_sidebar_state="collapsed",
+    initial_sidebar_state="expanded",
 )
 
 import auth  # noqa: E402
+import versions  # noqa: E402
 import data as data_mod  # noqa: E402
 import settings_store  # noqa: E402
 import ui  # noqa: E402
@@ -72,6 +73,46 @@ def load_data():
         st.stop()
 
 
+def version_bar() -> None:
+    """ChatGPT-style release picker, top-left of the content area.
+
+    It cannot hot-swap the running code - one deployment serves one branch -
+    so selecting an older release shows what is in it and how to switch to it.
+    """
+    options = versions.all_versions(5)
+    labels = [versions.label(v) for v in options]
+    picker, _rest = st.columns([1.35, 2.65])
+    with picker:
+        chosen_label = st.selectbox(
+            "Version", labels, index=0, key="version_pick",
+            label_visibility="collapsed",
+        )
+    chosen = options[labels.index(chosen_label)]
+
+    if chosen["version"] == versions.CURRENT:
+        st.markdown(
+            f'<div class="flux-ver-note">Running v{versions.CURRENT}, the newest '
+            f'build<span class="flux-ver-pill">Latest</span></div>',
+            unsafe_allow_html=True,
+        )
+        return
+
+    with st.expander(
+        f"What is in v{chosen['version']}, and how to switch to it", expanded=True
+    ):
+        st.markdown(f"**{chosen['name']}** · released {chosen['date']}")
+        ui.callout(chosen["changes"], "grey", title="What this release contains")
+        ui.callout(
+            versions.rollback_steps(chosen), "amber",
+            title=f"Roll the live app back to v{chosen['version']}",
+        )
+        st.caption(
+            f"You are still running v{versions.CURRENT}. Selecting a release here "
+            "does not change the running app - Streamlit serves one branch at a "
+            "time, so the switch happens in the app settings."
+        )
+
+
 def sidebar(bundle) -> None:
     """Shared sidebar: freshness, refresh, scope of the data."""
     with st.sidebar:
@@ -97,6 +138,7 @@ def sidebar(bundle) -> None:
 
         st.divider()
         auth.sidebar_account()
+        st.caption(f"App version v{versions.CURRENT}")
 
         if bundle.warnings:
             st.divider()
@@ -112,6 +154,16 @@ def _page(module_name: str, func_name: str = "render"):
     def runner():
         bundle = load_data()
         sidebar(bundle)
+        version_bar()
+        try:
+            email = str(getattr(st.user, "email", "") or "")
+            name = str(getattr(st.user, "name", "") or "") or email.split("@")[0]
+        except Exception:
+            email, name = "", ""
+        if email:
+            ui.top_bar(name or email, email,
+                       right=f"<b>{bundle.loaded_at:%d %b %Y}</b> · data pulled "
+                             f"{bundle.loaded_at:%H:%M}")
         module = __import__(module_name)
         getattr(module, func_name)(bundle, get_config())
 

@@ -306,9 +306,9 @@ def _display_tab(config: dict) -> None:
     display["green_hex"] = col_a.color_picker(
         "Green", value=display.get("green_hex", "#059669"), key="c_green")
     display["amber_hex"] = col_b.color_picker(
-        "Amber", value=display.get("amber_hex", "#FF9F0A"), key="c_amber")
+        "Amber", value=display.get("amber_hex", "#E08A17"), key="c_amber")
     display["red_hex"] = col_c.color_picker(
-        "Red", value=display.get("red_hex", "#FF3B30"), key="c_red")
+        "Red", value=display.get("red_hex", "#E0503C"), key="c_red")
     display["neutral_hex"] = col_d.color_picker(
         "Neutral", value=display.get("neutral_hex", "#64748B"), key="c_neutral")
     ui.chips([("Green sample", "green"), ("Amber sample", "amber"),

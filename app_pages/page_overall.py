@@ -109,8 +109,8 @@ def render(bundle, config: dict, embedded: bool = False) -> None:
     ui.section("Trends across every month")
     labels = series["month_label"]
     fig = go.Figure()
-    fig.add_bar(x=labels, y=series["net_orders"], name="Net orders", marker_color="#0A84FF")
-    fig.add_bar(x=labels, y=series["not_delivered"], name="Not delivered", marker_color="#FF3B30")
+    fig.add_bar(x=labels, y=series["net_orders"], name="Net orders", marker_color="#1B1B1E")
+    fig.add_bar(x=labels, y=series["not_delivered"], name="Not delivered", marker_color="#E0503C")
     fig.update_layout(barmode="stack", title="Net vs not delivered", yaxis_title="Orders")
     ui.show_chart(fig, height=310)
 
@@ -118,7 +118,7 @@ def render(bundle, config: dict, embedded: bool = False) -> None:
     with col_a:
         fig = go.Figure()
         fig.add_scatter(x=labels, y=series["reflection_rate"], name="Reflection %",
-                        mode="lines+markers", line=dict(color="#0A84FF", width=2.5))
+                        mode="lines+markers", line=dict(color="#1B1B1E", width=2.5))
         ui.threshold_bands(fig, config["kpis"].get("reflection_rate", {}),
                            config.get("display", {}), series["reflection_rate"])
         fig.update_layout(title="Reflection rate", yaxis_title="%")
@@ -126,7 +126,7 @@ def render(bundle, config: dict, embedded: bool = False) -> None:
     with col_b:
         fig = go.Figure()
         fig.add_scatter(x=labels, y=series["cancellation_rate"], name="Cancellation %",
-                        mode="lines+markers", line=dict(color="#FF3B30", width=2.5))
+                        mode="lines+markers", line=dict(color="#E0503C", width=2.5))
         ui.threshold_bands(fig, config["kpis"].get("cancellation_rate", {}),
                            config.get("display", {}), series["cancellation_rate"])
         fig.update_layout(title="Cancellation rate", yaxis_title="%")

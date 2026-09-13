@@ -224,9 +224,9 @@ def render(bundle, config: dict) -> None:
         daily = metrics.daily_series(sel)
         fig = go.Figure()
         fig.add_bar(x=daily["day"], y=daily["orders"], name="Orders",
-                    marker_color="#0A84FF")
+                    marker_color="#1B1B1E")
         fig.add_scatter(x=daily["day"], y=daily["delivered"], name="Delivered",
-                        mode="lines+markers", line=dict(color="#5E5CE6", width=2))
+                        mode="lines+markers", line=dict(color="#B9A7F5", width=2))
         fig.update_layout(yaxis_title="Orders")
         ui.show_chart(fig, height=280)
 
@@ -262,7 +262,7 @@ def render(bundle, config: dict) -> None:
         if not status.empty:
             fig = go.Figure(go.Bar(
                 x=status["orders"], y=status["status"], orientation="h",
-                marker_color="#0A84FF",
+                marker_color="#1B1B1E",
                 text=status["orders"], textposition="auto",
             ))
             fig.update_layout(title="Amazon status", xaxis_title="Orders")
@@ -271,8 +271,8 @@ def render(bundle, config: dict) -> None:
     with col_b:
         pay = metrics.payment_breakdown(sel)
         if not pay.empty:
-            tone_map = {"PAID": "#059669", "PENDING": "#FF9F0A",
-                        "CANCELLED": "#FF3B30", "HOLD": "#7C3AED",
+            tone_map = {"PAID": "#059669", "PENDING": "#E08A17",
+                        "CANCELLED": "#E0503C", "HOLD": "#7C3AED",
                         "UNKNOWN": "#64748B"}
             fig = go.Figure(go.Bar(
                 x=pay["orders"], y=pay["payment_state"], orientation="h",
@@ -309,11 +309,11 @@ def _trend_charts(series: pd.DataFrame, config: dict, selected_ym: str) -> None:
 
     fig = go.Figure()
     fig.add_bar(x=labels, y=series["net_orders"], name="Net orders",
-                marker_color="#0A84FF")
+                marker_color="#1B1B1E")
     fig.add_bar(x=labels, y=series["not_delivered"], name="Not delivered",
-                marker_color="#FF3B30")
+                marker_color="#E0503C")
     fig.add_scatter(x=labels, y=series["review_submitted"], name="Reviews submitted",
-                    mode="lines+markers", line=dict(color="#5E5CE6", width=2))
+                    mode="lines+markers", line=dict(color="#B9A7F5", width=2))
     fig.update_layout(barmode="stack", yaxis_title="Orders", title="Volume by month")
     ui.show_chart(fig, height=320)
 
@@ -321,10 +321,10 @@ def _trend_charts(series: pd.DataFrame, config: dict, selected_ym: str) -> None:
     with col_a:
         fig = go.Figure()
         fig.add_scatter(x=labels, y=series["reflection_rate"], name="Reflection %",
-                        mode="lines+markers", line=dict(color="#0A84FF", width=2.5))
+                        mode="lines+markers", line=dict(color="#1B1B1E", width=2.5))
         fig.add_scatter(x=labels, y=series["order_submission_rate"],
                         name="Submission %", mode="lines+markers",
-                        line=dict(color="#5E5CE6", width=2, dash="dot"))
+                        line=dict(color="#B9A7F5", width=2, dash="dot"))
         ui.threshold_bands(fig, config.get("kpis", {}).get("reflection_rate", {}),
                            display, series["reflection_rate"])
         fig.update_layout(title="Reflection and submission", yaxis_title="%")
@@ -332,9 +332,9 @@ def _trend_charts(series: pd.DataFrame, config: dict, selected_ym: str) -> None:
     with col_b:
         fig = go.Figure()
         fig.add_scatter(x=labels, y=series["cancellation_rate"], name="Cancellation %",
-                        mode="lines+markers", line=dict(color="#FF3B30", width=2.5))
+                        mode="lines+markers", line=dict(color="#E0503C", width=2.5))
         fig.add_scatter(x=labels, y=series["return_rate"], name="Return %",
-                        mode="lines+markers", line=dict(color="#FF9F0A", width=2))
+                        mode="lines+markers", line=dict(color="#E08A17", width=2))
         ui.threshold_bands(fig, config.get("kpis", {}).get("cancellation_rate", {}),
                            display, series["cancellation_rate"])
         fig.update_layout(title="Cancellation and returns", yaxis_title="%")
@@ -342,9 +342,9 @@ def _trend_charts(series: pd.DataFrame, config: dict, selected_ym: str) -> None:
 
     fig = go.Figure()
     fig.add_bar(x=labels, y=series["order_value"], name="Order value funded",
-                marker_color="#0A84FF")
+                marker_color="#1B1B1E")
     fig.add_scatter(x=labels, y=series["paid_unreflected_amt"],
                     name="Paid but not reflected", mode="lines+markers",
-                    line=dict(color="#FF3B30", width=2))
+                    line=dict(color="#E0503C", width=2))
     fig.update_layout(title="Money by month", yaxis_title=display.get("currency_symbol", "Rs"))
     ui.show_chart(fig, height=300)

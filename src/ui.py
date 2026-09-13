@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import html
 import io
+import re
 from datetime import datetime
 from typing import Any, Iterable, Sequence
 
@@ -21,8 +22,8 @@ from theme import CSS as BASE_CSS
 SEVERITY_ORDER = {"red": 0, "amber": 1, "ok": 2, "neutral": 3}
 
 CHART_COLORWAY = [
-    "#0A84FF", "#5E5CE6", "#BF5AF2", "#34C759", "#FF9F0A",
-    "#FF375F", "#64D2FF", "#FFD60A", "#8E8E93", "#FF6482",
+    "#1B1B1E", "#B9A7F5", "#C2DB33", "#2E9E5B", "#E08A17",
+    "#E0503C", "#7C6BD1", "#D9F154", "#93939E", "#E6E0FB",
 ]
 
 
@@ -122,14 +123,19 @@ def _band_text(spec: dict) -> str:
 
 def _colour(severity: str, display: dict) -> str:
     return {
-        "red": display.get("red_hex", "#FF3B30"),
-        "amber": display.get("amber_hex", "#FF9F0A"),
-        "green": display.get("green_hex", "#34C759"),
-    }.get(severity, display.get("neutral_hex", "#6E6E73"))
+        "red": display.get("red_hex", "#E0503C"),
+        "amber": display.get("amber_hex", "#E08A17"),
+        "green": display.get("green_hex", "#2E9E5B"),
+    }.get(severity, display.get("neutral_hex", "#93939E"))
+
+
+ICONS = {
+    "green": "●", "amber": "●", "red": "●", "neutral": "●",
+}
 
 
 def render_kpis(cards: Sequence[dict], config: dict | None = None) -> None:
-    """Render a wrapping grid of KPI cards as one HTML block."""
+    """A wrapping grid of Flux-style stat cards, rendered as one HTML block."""
     display = (config or {}).get("display", {})
     symbol = display.get("currency_symbol", "Rs")
     parts: list[str] = ['<div class="kpi-grid">']
@@ -137,42 +143,56 @@ def render_kpis(cards: Sequence[dict], config: dict | None = None) -> None:
     for card in cards:
         if card is None:
             continue
-        accent = _colour(card.get("severity", "neutral"), display)
-        value_txt = html.escape(
-            fmt_value(card.get("value"), card.get("unit", "n"), symbol)
-        )
-        tip_bits = [t for t in (card.get("help"), card.get("band")) if t]
+        severity = card.get("severity", "neutral")
+        accent = _colour(severity, display)
+        unit = card.get("unit", "n")
+        raw_value = card.get("value")
+
+        # Money and counts read better with the unit dropped to a suffix.
+        if unit == "%":
+            value_txt, unit_txt = fmt_pct(raw_value), ""
+        elif unit in ("Rs", "money"):
+            money = fmt_money(raw_value, symbol, compact=True)
+            unit_txt = symbol
+            value_txt = money[len(symbol):].strip() if money.startswith(symbol) else money
+        else:
+            value_txt, unit_txt = fmt_int(raw_value), ""
+
+        tip_bits = [x for x in (card.get("help"), card.get("band")) if x]
         tip = html.escape(" | ".join(tip_bits)) if tip_bits else ""
+        tone_class = f" is-{severity}" if severity in ("red", "amber") else ""
 
         block = [
-            f'<div class="kpi-card" style="--accent:{accent}"'
-            + (f' title="{tip}"' if tip else "")
-            + ">",
+            f'<div class="kpi-card{tone_class}"' + (f' title="{tip}"' if tip else "") + ">",
+            '<div class="kpi-head">',
+            f'<div class="kpi-dot" style="color:{accent}">'
+            f'{ICONS.get(severity, "●")}</div>',
             f'<div class="kpi-label">{html.escape(str(card.get("label", "")))}</div>',
-            f'<div class="kpi-value">{value_txt}</div>',
+            "</div>",
+            '<div class="kpi-value">',
+            html.escape(value_txt),
         ]
+        if unit_txt:
+            block.append(f'<span class="kpi-unit">{html.escape(unit_txt)}</span>')
 
         delta = card.get("delta")
         if delta is not None and delta == delta:
             better = card.get("higher_is_better")
-            if better is None:
+            if better is None or delta == 0:
                 trend = "flat"
             elif (delta > 0 and better) or (delta < 0 and not better):
                 trend = "up"
-            elif delta == 0:
-                trend = "flat"
             else:
                 trend = "down"
-            arrow = "▲" if delta > 0 else ("▼" if delta < 0 else "→")
+            arrow = "+" if delta > 0 else ("-" if delta < 0 else "")
             dtxt = fmt_value(abs(delta), card.get("delta_unit", "n"), symbol)
             block.append(
-                f'<div class="kpi-delta {trend}">{arrow} {html.escape(dtxt)}</div>'
+                f'<span class="kpi-badge {trend}">{arrow}{html.escape(dtxt)}</span>'
             )
+        block.append("</div>")
 
         if card.get("sub"):
-            block.append(
-                f'<div class="kpi-sub">{html.escape(str(card["sub"]))}</div>'
-            )
+            block.append(f'<div class="kpi-sub">{html.escape(str(card["sub"]))}</div>')
         block.append("</div>")
         parts.append("".join(block))
 
@@ -197,6 +217,20 @@ def callout(lines: Sequence[str], tone: str = "grey", title: str | None = None) 
     head = f"<strong>{html.escape(title)}</strong>" if title else ""
     st.markdown(
         f'<div class="callout {tone}">{head}<ul>{body}</ul></div>',
+        unsafe_allow_html=True,
+    )
+
+
+def top_bar(name: str, email: str, right: str = "") -> None:
+    """Avatar, who is signed in, and an optional pill on the right."""
+    initials = "".join(p[0] for p in re.split(r"[\s._-]+", name or "?") if p)[:2].upper()
+    right_html = f'<div class="flux-datepill">{right}</div>' if right else ""
+    st.markdown(
+        f'<div class="flux-top"><div class="flux-user">'
+        f'<div class="flux-avatar">{html.escape(initials or "?")}</div>'
+        f'<div><div class="flux-user-name">{html.escape(name)}</div>'
+        f'<div class="flux-user-mail">{html.escape(email)}</div></div></div>'
+        f'<div class="flux-spacer"></div>{right_html}</div>',
         unsafe_allow_html=True,
     )
 
@@ -253,7 +287,7 @@ def style_chart(fig: go.Figure, height: int = 320, legend: bool = True) -> go.Fi
         colorway=CHART_COLORWAY,
         plot_bgcolor="rgba(0,0,0,0)",
         paper_bgcolor="rgba(0,0,0,0)",
-        font=dict(size=12, color="#1C1C1E", family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif"),
+        font=dict(size=12, color="#17171A", family="Inter, -apple-system, Segoe UI, sans-serif"),
         showlegend=legend,
         legend=dict(
             orientation="h", yanchor="bottom", y=1.0,
@@ -269,8 +303,8 @@ def style_chart(fig: go.Figure, height: int = 320, legend: bool = True) -> go.Fi
                 font=dict(size=13.5), pad=dict(t=2, b=10),
             )
         )
-    fig.update_xaxes(showgrid=False, linecolor="rgba(120,135,165,.25)")
-    fig.update_yaxes(gridcolor="rgba(120,135,165,.14)", zerolinecolor="rgba(120,135,165,.25)")
+    fig.update_xaxes(showgrid=False, linecolor="#E3E3DD")
+    fig.update_yaxes(gridcolor="#EFEFEA", zerolinecolor="#E3E3DD")
     return fig
 
 
@@ -293,7 +327,7 @@ def threshold_bands(
     if not spec:
         return fig
     mode = spec.get("mode")
-    green_hex = display.get("green_hex", "#34C759")
+    green_hex = display.get("green_hex", "#2E9E5B")
 
     marks = [
         float(spec[k]) for k in ("green", "amber", "min", "max")
@@ -326,7 +360,7 @@ def threshold_bands(
 # ---------------------------------------------------------------------------
 def severity_styler(df: pd.DataFrame, column: str = "severity"):
     """Tint whole rows by severity for the exceptions tables."""
-    tints = {"red": "#FFF0EF", "amber": "#FFF7E8", "ok": "#FAFBFD", "green": "#EDFBF1"}
+    tints = {"red": "#FCEAE7", "amber": "#FDF2E0", "ok": "#FBFBF9", "green": "#E6F5EC"}
 
     def paint(row: pd.Series):
         colour = tints.get(str(row.get(column, "")).lower(), "")

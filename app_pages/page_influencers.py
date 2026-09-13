@@ -237,10 +237,10 @@ def _pipeline_tab(leads: pd.DataFrame, configured: bool, symbol: str,
     counts = leads["status"].value_counts().reindex(inf.PIPELINE_STATUSES).fillna(0)
     fig = go.Figure(go.Bar(
         x=counts.values, y=counts.index, orientation="h",
-        marker_color=["#34C759" if s in ("Agreed", "Collab done")
-                      else "#FF3B30" if s == "Rejected"
-                      else "#FF9F0A" if s in ("Contacted", "Negotiating", "On hold")
-                      else "#0A84FF" for s in counts.index],
+        marker_color=["#2E9E5B" if s in ("Agreed", "Collab done")
+                      else "#E0503C" if s == "Rejected"
+                      else "#E08A17" if s in ("Contacted", "Negotiating", "On hold")
+                      else "#1B1B1E" for s in counts.index],
         text=counts.values.astype(int), textposition="auto",
     ))
     fig.update_yaxes(autorange="reversed")

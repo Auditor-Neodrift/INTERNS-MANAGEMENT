@@ -4,7 +4,7 @@ A Streamlit web app that reads the NEODRIFT interns order workbook live from
 Google Sheets and turns it into a KPI dashboard, automated monthly reports, a
 money audit, a returns report, intern scorecards, influencer sourcing and a
 configurable exception engine. Built to be read on a phone as easily as on a
-laptop, in an iOS-style glass interface.
+laptop.
 
 The app only ever **reads** the audit workbook — it never writes to it.
 The one thing it writes is influencer leads, and those go to a **separate**
@@ -217,6 +217,35 @@ intern, platform, rate and date, and export the filtered set.
 Leads live in **their own Google Sheet**, written through a service account.
 Setup is on the Influencers → *Setup* tab; until it is connected the page
 explains what is needed instead of failing.
+
+## Versions and rolling back
+
+Every release is pushed as its own branch, so going back to an earlier build is
+a settings change rather than a git operation.
+
+| Version | Branch | What it is |
+|---|---|---|
+| **2.3** | `v2.3` | Flux dashboard UI, version picker *(latest, also on `main`)* |
+| 2.2 | `v2.2` | Intern alerts, real End date, iOS glass |
+| 2.1 | `v2.1` | Interns area, influencer sourcing, six tabbed areas |
+
+The picker in the top-left corner lists the last five releases with the newest
+marked **Latest**. Selecting an older one shows what is in it and the steps to
+switch.
+
+**It does not hot-swap the running app, and nothing could** — Streamlit Cloud
+serves one branch per deployment. To actually roll back:
+
+1. Open the app on share.streamlit.io → **Settings → General**
+2. Change **Branch** from `main` to e.g. `v2.2`, save
+3. It redeploys in under a minute; secrets are untouched
+4. Set the branch back to `main` to return to the newest build
+
+Because the old branch is untouched, you can also run both at once: deploy a
+second app from `v2.2` and compare them side by side while fixing `main`.
+
+To cut the next release, add an entry at the top of `VERSIONS` in
+`src/versions.py`, bump `CURRENT`, then `git branch v2.4 && git push -u origin v2.4`.
 
 ## Access control
 
