@@ -10,10 +10,22 @@ name the branch for each release, and hand you the exact rollback steps.
 """
 from __future__ import annotations
 
-CURRENT = "2.4"
+CURRENT = "2.5"
 
 # Newest first. Keep the last five; older entries can be trimmed.
 VERSIONS: list[dict] = [
+    {
+        "version": "2.5",
+        "name": "Cleaner version menu",
+        "branch": "v2.5",
+        "date": "14 Sep 2026",
+        "changes": [
+            "Version toggle is bare text with no pill or border; the menu lists "
+            "version names only, with Latest marking the newest.",
+            "Rollback detail moved out of the menu and under the toggle, so the "
+            "list stays a list.",
+        ],
+    },
     {
         "version": "2.4",
         "name": "Alert triage + version toggle",

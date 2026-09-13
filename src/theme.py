@@ -424,6 +424,34 @@ CSS = """
   [data-testid="stPopoverButton"]:active {
     box-shadow: none !important; border: none !important;
   }
+
+  /* Menu rows: plain left-aligned text, no pill, with the Latest tag styled
+     from the trailing word so the label stays a single button string. */
+  [data-testid="stPopoverBody"] .stButton > button,
+  [data-testid="stPopoverBody"] button[data-testid^="stBaseButton"] {
+    background: transparent !important; border: none !important;
+    box-shadow: none !important; border-radius: 9px !important;
+    justify-content: flex-start !important; text-align: left !important;
+    padding: .42rem .6rem !important; margin: 0 !important;
+    font-size: .93rem !important; font-weight: 500 !important;
+    color: var(--flux-ink) !important; min-height: 0 !important;
+  }
+  [data-testid="stPopoverBody"] .stButton > button:hover {
+    background: rgba(23,23,26,.06) !important;
+  }
+  [data-testid="stPopoverBody"] .stButton > button p {
+    font-size: .93rem !important; font-weight: 500 !important;
+    white-space: pre !important; color: var(--flux-ink) !important;
+  }
+  /* Streamlit centres the label in a nested flex wrapper inside the button,
+     which overrides the button's own alignment - so unset it there too. */
+  [data-testid="stPopoverBody"] .stButton > button > div,
+  [data-testid="stPopoverBody"] .stButton > button > div > span {
+    justify-content: flex-start !important; width: 100% !important;
+  }
+  [data-testid="stPopoverBody"] [data-testid="stVerticalBlock"] { gap: .1rem !important; }
+  [data-testid="stPopoverBody"] { padding: .45rem !important; min-width: 190px; }
+
   /* The popover panel renders in a portal outside stMain, so primary buttons
      there miss the stMain rule and fall back to white-on-white. */
   button[data-testid="stBaseButton-primary"] {
@@ -434,15 +462,7 @@ CSS = """
   [data-baseweb="popover"] [data-testid="stButton"] button {
     justify-content: flex-start !important; text-align: left !important;
   }
-  .ver-row-sub {
-    font-size: .745rem; color: var(--flux-ink-3); line-height: 1.35;
-    margin: -.5rem 0 .35rem .15rem;
-  }
   .ver-check { font-size: 1.05rem; color: var(--flux-ink); text-align: center; line-height: 1; }
-  .ver-head {
-    font-size: .7rem; font-weight: 600; letter-spacing: .06em;
-    text-transform: uppercase; color: var(--flux-ink-3); margin-bottom: .35rem;
-  }
 
   /* ---------- segmented sub-nav ---------- */
   [data-testid="stSegmentedControl"] button {

@@ -77,8 +77,10 @@ def load_data():
 def version_bar() -> None:
     """Release picker: plain text plus a chevron, ChatGPT style.
 
-    It cannot hot-swap the running code - one deployment serves one branch -
-    so choosing an older release shows what it contains and how to point the
+    The menu holds nothing but version names, with the newest labelled Latest.
+    Anything explanatory sits below the toggle instead, so the list stays a
+    list. Selecting a release cannot hot-swap the running code - one
+    deployment serves one branch - so an older pick reveals how to point the
     deployment at it.
     """
     options = versions.all_versions(5)
@@ -89,51 +91,34 @@ def version_bar() -> None:
     st.markdown('<div class="flux-verbar"></div>', unsafe_allow_html=True)
     left, _rest = st.columns([1, 3])
     with left:
-        suffix = " · Latest" if shown["version"] == versions.CURRENT else ""
-        with st.popover(f"v{shown['version']}{suffix}  ⌄", width="content"):
-            st.markdown('<div class="ver-head">Web app version</div>',
-                        unsafe_allow_html=True)
+        with st.popover(f"v{shown['version']}  ⌄", width="content"):
             for version in options:
-                is_running = version["version"] == versions.CURRENT
-                # The tick rides in the label so it can never drift out of line
-                # with its row the way a separate column does.
-                tick = "   ✓" if is_running else ""
-                if st.button(
-                    f"v{version['version']} · {version['name']}{tick}",
-                    key=f"ver_{version['version']}", width="stretch",
-                ):
+                is_latest = version["version"] == versions.CURRENT
+                label = f"v{version['version']}"
+                if is_latest:
+                    label += "   Latest"
+                if st.button(label, key=f"ver_{version['version']}",
+                             width="stretch"):
                     st.session_state["version_view"] = version["version"]
                     st.rerun()
-                st.markdown(
-                    '<div class="ver-row-sub">'
-                    + (
-                        "Latest - currently running" if is_running
-                        else f"Rollback available on branch {version['branch']}"
-                    )
-                    + "</div>",
-                    unsafe_allow_html=True,
-                )
-
-            if shown["version"] != versions.CURRENT:
-                st.divider()
-                st.markdown(f"**{shown['name']}** · {shown['date']}")
-                for line in shown["changes"]:
-                    st.markdown(f"- {line}")
-                ui.callout(
-                    versions.rollback_steps(shown), "amber",
-                    title=f"Switch the live app to v{shown['version']}",
-                )
-                st.caption(
-                    f"Still running v{versions.CURRENT}. Streamlit serves one "
-                    "branch at a time, so the switch happens in app settings."
-                )
 
     if shown["version"] != versions.CURRENT:
         st.markdown(
-            f'<div class="flux-ver-note">Viewing notes for v{shown["version"]} · '
-            f'the app is running v{versions.CURRENT}</div>',
+            f'<div class="flux-ver-note">Viewing v{shown["version"]} · '
+            f'{shown["name"]} · the app is running v{versions.CURRENT}</div>',
             unsafe_allow_html=True,
         )
+        with st.expander(f"How to switch the live app to v{shown['version']}"):
+            for line in shown["changes"]:
+                st.markdown(f"- {line}")
+            ui.callout(
+                versions.rollback_steps(shown), "amber",
+                title=f"Point the deployment at v{shown['version']}",
+            )
+            st.caption(
+                f"Still running v{versions.CURRENT}. Streamlit serves one branch "
+                "at a time, so the switch happens in the app settings."
+            )
 
 
 def sidebar(bundle) -> None:
