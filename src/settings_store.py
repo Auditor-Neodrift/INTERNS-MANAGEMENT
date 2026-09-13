@@ -223,6 +223,8 @@ DEFAULT_DISPLAY: dict[str, Any] = {
     "currency_symbol": "Rs",
     "intern_min_orders_for_grading": 5,
     "tenure_days": 30,
+    "intern_idle_days": 3,
+    "intern_cancel_alert_pct": 30.0,
 }
 
 DEFAULTS: dict[str, Any] = {

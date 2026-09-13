@@ -2,8 +2,9 @@
 
 A Streamlit web app that reads the NEODRIFT interns order workbook live from
 Google Sheets and turns it into a KPI dashboard, automated monthly reports, a
-money audit, a returns report, intern scorecards and a configurable exception
-engine. Built to be read on a phone as easily as on a laptop.
+money audit, a returns report, intern scorecards, influencer sourcing and a
+configurable exception engine. Built to be read on a phone as easily as on a
+laptop, in an iOS-style glass interface.
 
 The app only ever **reads** the audit workbook — it never writes to it.
 The one thing it writes is influencer leads, and those go to a **separate**
@@ -156,15 +157,35 @@ Lumping them together flatters a parcel that is merely late and punishes an
 intern for a customer's cancellation. They sum to the not-delivered total used
 elsewhere in the app.
 
-**Tenure reminder.** Any *Active* intern whose joining date is more than 30 days
-ago raises a standing reminder on the Dashboard and the Interns page:
+### Alerts
+
+Four checks run on every intern. All limits are editable under
+Settings → *Display & data*.
+
+| Alert | Fires when | Severity |
+|---|---|---|
+| **Clerical error** | The roster contradicts itself | red |
+| **Active but no orders** | Active for more than 3 days with zero orders | red |
+| **Cancellation rate too high** | Cancelled + undelivered above 30% of their orders | red |
+| **Tenure review due** | Active and more than 30 days past joining | amber |
+
+A clerical error means one of: still marked *Active* yet an end date is
+recorded (usually one already in the past), an end date on or before the
+joining date, or no joining date at all. These come first because every other
+intern figure is derived from those dates — fix them in the sheet and the rest
+corrects itself. Active interns sort above former ones inside each group.
+
+The tenure reminder reads:
 
 > This intern's 30-day tenure period is over. Please review their performance
 > and take the required action.
 
-It is a persistent banner rather than a modal, so it survives a page refresh and
-cannot be dismissed by accident. The 30-day window is editable under
-Settings → *Display & data*.
+All alerts are persistent banners rather than modals, so they survive a refresh
+and cannot be dismissed by accident.
+
+> The **End date** column shows the date actually recorded on the roster and is
+> blank when none is set — it is never back-filled with a guess, because that is
+> exactly what hides a clerical error.
 
 **Daily activity** shows orders per intern per day over a window you choose, so
 a drop-off is visible within days rather than at month end.

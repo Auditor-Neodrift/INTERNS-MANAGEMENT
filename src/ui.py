@@ -21,8 +21,8 @@ from theme import CSS as BASE_CSS
 SEVERITY_ORDER = {"red": 0, "amber": 1, "ok": 2, "neutral": 3}
 
 CHART_COLORWAY = [
-    "#4285F4", "#9B72CB", "#D96570", "#1E8E3E", "#E37400",
-    "#12B5CB", "#7C6BD1", "#F9AB00", "#5F6368", "#A8518A",
+    "#0A84FF", "#5E5CE6", "#BF5AF2", "#34C759", "#FF9F0A",
+    "#FF375F", "#64D2FF", "#FFD60A", "#8E8E93", "#FF6482",
 ]
 
 
@@ -122,10 +122,10 @@ def _band_text(spec: dict) -> str:
 
 def _colour(severity: str, display: dict) -> str:
     return {
-        "red": display.get("red_hex", "#D93025"),
-        "amber": display.get("amber_hex", "#E37400"),
-        "green": display.get("green_hex", "#1E8E3E"),
-    }.get(severity, display.get("neutral_hex", "#5F6368"))
+        "red": display.get("red_hex", "#FF3B30"),
+        "amber": display.get("amber_hex", "#FF9F0A"),
+        "green": display.get("green_hex", "#34C759"),
+    }.get(severity, display.get("neutral_hex", "#6E6E73"))
 
 
 def render_kpis(cards: Sequence[dict], config: dict | None = None) -> None:
@@ -253,7 +253,7 @@ def style_chart(fig: go.Figure, height: int = 320, legend: bool = True) -> go.Fi
         colorway=CHART_COLORWAY,
         plot_bgcolor="rgba(0,0,0,0)",
         paper_bgcolor="rgba(0,0,0,0)",
-        font=dict(size=12, color="#0F172A"),
+        font=dict(size=12, color="#1C1C1E", family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif"),
         showlegend=legend,
         legend=dict(
             orientation="h", yanchor="bottom", y=1.0,
@@ -269,8 +269,8 @@ def style_chart(fig: go.Figure, height: int = 320, legend: bool = True) -> go.Fi
                 font=dict(size=13.5), pad=dict(t=2, b=10),
             )
         )
-    fig.update_xaxes(showgrid=False, linecolor="#E2E8F0")
-    fig.update_yaxes(gridcolor="#F1F5F9", zerolinecolor="#E2E8F0")
+    fig.update_xaxes(showgrid=False, linecolor="rgba(120,135,165,.25)")
+    fig.update_yaxes(gridcolor="rgba(120,135,165,.14)", zerolinecolor="rgba(120,135,165,.25)")
     return fig
 
 
@@ -293,7 +293,7 @@ def threshold_bands(
     if not spec:
         return fig
     mode = spec.get("mode")
-    green_hex = display.get("green_hex", "#1E8E3E")
+    green_hex = display.get("green_hex", "#34C759")
 
     marks = [
         float(spec[k]) for k in ("green", "amber", "min", "max")
@@ -326,7 +326,7 @@ def threshold_bands(
 # ---------------------------------------------------------------------------
 def severity_styler(df: pd.DataFrame, column: str = "severity"):
     """Tint whole rows by severity for the exceptions tables."""
-    tints = {"red": "#FEF2F2", "amber": "#FFFBEB", "ok": "#F8FAFC", "green": "#ECFDF5"}
+    tints = {"red": "#FFF0EF", "amber": "#FFF7E8", "ok": "#FAFBFD", "green": "#EDFBF1"}
 
     def paint(row: pd.Series):
         colour = tints.get(str(row.get(column, "")).lower(), "")

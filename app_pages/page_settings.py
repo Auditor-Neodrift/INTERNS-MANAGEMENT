@@ -306,9 +306,9 @@ def _display_tab(config: dict) -> None:
     display["green_hex"] = col_a.color_picker(
         "Green", value=display.get("green_hex", "#059669"), key="c_green")
     display["amber_hex"] = col_b.color_picker(
-        "Amber", value=display.get("amber_hex", "#D97706"), key="c_amber")
+        "Amber", value=display.get("amber_hex", "#FF9F0A"), key="c_amber")
     display["red_hex"] = col_c.color_picker(
-        "Red", value=display.get("red_hex", "#DC2626"), key="c_red")
+        "Red", value=display.get("red_hex", "#FF3B30"), key="c_red")
     display["neutral_hex"] = col_d.color_picker(
         "Neutral", value=display.get("neutral_hex", "#64748B"), key="c_neutral")
     ui.chips([("Green sample", "green"), ("Amber sample", "amber"),
@@ -332,11 +332,24 @@ def _display_tab(config: dict) -> None:
         value=int(display.get("intern_min_orders_for_grading", 5)),
         min_value=1, max_value=100, step=1, key="d_minorders",
     )
-    display["tenure_days"] = st.number_input(
+    col_d, col_e, col_f = st.columns(3)
+    display["tenure_days"] = col_d.number_input(
         "Intern tenure window (days)",
         value=int(display.get("tenure_days", 30)),
         min_value=1, max_value=365, step=1, key="d_tenure",
         help="An active intern past this many days since joining raises a tenure review reminder.",
+    )
+    display["intern_idle_days"] = col_e.number_input(
+        "Alert if active with no orders after (days)",
+        value=int(display.get("intern_idle_days", 3)),
+        min_value=1, max_value=90, step=1, key="d_idle",
+        help="An active intern who has been on the roster longer than this with zero orders is flagged.",
+    )
+    display["intern_cancel_alert_pct"] = col_f.number_input(
+        "Alert if not-delivered rate exceeds (%)",
+        value=float(display.get("intern_cancel_alert_pct", 30.0)),
+        min_value=1.0, max_value=100.0, step=5.0, format="%.0f", key="d_cancelpct",
+        help="Cancelled plus undelivered, over total orders, for an active intern.",
     )
     display["currency_symbol"] = st.text_input(
         "Currency label", value=display.get("currency_symbol", "Rs"),

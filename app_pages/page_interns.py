@@ -22,7 +22,7 @@ ROSTER_COLUMNS = [
     ("name", "Intern"),
     ("status", "Status"),
     ("joining_date", "Joining date"),
-    ("tenure_end", "End date"),
+    ("leaving_date", "End date"),
     ("tenure_days_served", "Tenure (days)"),
     ("stipend", "Stipend"),
     ("orders", "Orders completed"),
@@ -40,6 +40,8 @@ def render(bundle, config: dict) -> None:
     display = config.get("display", {})
     symbol = display.get("currency_symbol", "Rs")
     tenure_days = int(display.get("tenure_days", 30) or 30)
+    idle_days = int(display.get("intern_idle_days", 3) or 3)
+    cancel_pct = float(display.get("intern_cancel_alert_pct", 30.0) or 30.0)
 
     st.title("Interns")
     ui.hero(
@@ -52,26 +54,30 @@ def render(bundle, config: dict) -> None:
         ui.empty_state("No order rows found in the MAIN tab.")
         return
 
-    interns = metrics.intern_table(main, bundle.roster, tenure_days=tenure_days)
-    alerts = metrics.tenure_alerts(interns, tenure_days=tenure_days)
+    interns = metrics.intern_table(
+        main, bundle.roster, tenure_days=tenure_days,
+        idle_days=idle_days, cancel_pct=cancel_pct,
+    )
+    alerts = metrics.intern_alerts(interns, tenure_days, idle_days, cancel_pct)
     active = interns[interns["is_active"]]
+    urgent = alerts[alerts["severity"] == "red"] if not alerts.empty else alerts
 
     if not alerts.empty:
-        _alert_banner(alerts, tenure_days)
+        _alert_summary(alerts)
 
     tabs = st.tabs([
         f"Active now ({len(active)})", "All interns", "Daily activity",
-        f"Tenure alerts ({len(alerts)})", "Scorecards",
+        f"Alerts ({len(alerts)})", "Scorecards",
     ])
 
     with tabs[0]:
-        _active_tab(active, interns, main, config, symbol, tenure_days)
+        _active_tab(active, interns, main, config, symbol, tenure_days, urgent)
     with tabs[1]:
         _roster_tab(interns, config, symbol)
     with tabs[2]:
         _daily_tab(main, active, config)
     with tabs[3]:
-        _alerts_tab(alerts, tenure_days, symbol)
+        _alerts_tab(alerts, tenure_days, idle_days, cancel_pct)
     with tabs[4]:
         _scorecard_tab(bundle, main, config, display)
 
@@ -79,20 +85,25 @@ def render(bundle, config: dict) -> None:
 # ---------------------------------------------------------------------------
 # Banner
 # ---------------------------------------------------------------------------
-def _alert_banner(alerts: pd.DataFrame, tenure_days: int) -> None:
-    names = ", ".join(alerts["name"].head(6))
-    if len(alerts) > 6:
-        names += f" and {len(alerts) - 6} more"
-    ui.alert_card(
-        f"{len(alerts)} intern(s) have passed their {tenure_days}-day tenure",
-        "This intern's 30-day tenure period is over. Please review their "
-        "performance and take the required action."
-        if tenure_days == 30 else
-        f"This intern's {tenure_days}-day tenure period is over. Please review "
-        "their performance and take the required action.",
-        meta=f"{names}  ·  see the Tenure alerts tab",
-        tone="amber",
-    )
+def _alert_summary(alerts: pd.DataFrame) -> None:
+    """One chip row plus a card per red alert, worst kind first."""
+    counts = alerts["kind"].value_counts()
+    ui.chips([
+        (f"{int(counts.get('clerical', 0))} clerical errors",
+         "red" if counts.get("clerical") else "green"),
+        (f"{int(counts.get('idle', 0))} active with no orders",
+         "red" if counts.get("idle") else "green"),
+        (f"{int(counts.get('cancellation', 0))} high cancellation",
+         "red" if counts.get("cancellation") else "green"),
+        (f"{int(counts.get('tenure', 0))} tenure reviews due",
+         "amber" if counts.get("tenure") else "green"),
+    ])
+    reds = alerts[alerts["severity"] == "red"]
+    for _, row in reds.head(4).iterrows():
+        ui.alert_card(f"{row['name']} - {row['label']}", row["message"],
+                      meta=row["detail"], tone="red")
+    if len(reds) > 4:
+        ui.note(f"{len(reds) - 4} more red alerts on the Alerts tab.")
 
 
 # ---------------------------------------------------------------------------
@@ -100,7 +111,7 @@ def _alert_banner(alerts: pd.DataFrame, tenure_days: int) -> None:
 # ---------------------------------------------------------------------------
 def _active_tab(
     active: pd.DataFrame, interns: pd.DataFrame, main: pd.DataFrame,
-    config: dict, symbol: str, tenure_days: int,
+    config: dict, symbol: str, tenure_days: int, urgent: pd.DataFrame,
 ) -> None:
     if active.empty:
         ui.empty_state("Nobody on the roster is marked Active.")
@@ -139,7 +150,15 @@ def _active_tab(
         config,
     )
 
-    ui.section("Work update per active intern")
+    flagged = (
+        set(urgent["name"]) if urgent is not None and not urgent.empty else set()
+    )
+    ui.section(
+        "Work update per active intern",
+        "End date is the date actually recorded on the roster - blank means none "
+        "is set. An Active intern with an end date is a clerical error."
+        if flagged else None,
+    )
     view = _roster_view(active, symbol)
     st.dataframe(
         ui.grade_styler(view, {
@@ -154,20 +173,20 @@ def _active_tab(
     with col_a:
         fig = go.Figure()
         fig.add_bar(x=active["name"], y=active["delivered"], name="Delivered",
-                    marker_color="#1E8E3E")
+                    marker_color="#34C759")
         fig.add_bar(x=active["name"], y=active["undelivered"], name="Undelivered",
-                    marker_color="#E37400")
+                    marker_color="#FF9F0A")
         fig.add_bar(x=active["name"], y=active["cancelled"], name="Cancelled",
-                    marker_color="#D93025")
+                    marker_color="#FF3B30")
         fig.update_layout(barmode="stack", title="Order outcome by intern",
                           yaxis_title="Orders")
         ui.show_chart(fig, height=320)
     with col_b:
         fig = go.Figure()
         fig.add_bar(x=active["name"], y=active["orders"], name="Orders",
-                    marker_color="#4285F4")
+                    marker_color="#0A84FF")
         fig.add_bar(x=active["name"], y=active["reviews_submitted"],
-                    name="Reviews submitted", marker_color="#9B72CB")
+                    name="Reviews submitted", marker_color="#5E5CE6")
         fig.update_layout(barmode="group", title="Orders vs reviews submitted",
                           yaxis_title="Count")
         ui.show_chart(fig, height=320)
@@ -176,10 +195,10 @@ def _active_tab(
     prog = active.sort_values("days_since_joining", ascending=False)
     fig = go.Figure(go.Bar(
         x=prog["days_since_joining"], y=prog["name"], orientation="h",
-        marker_color=["#D93025" if e else "#4285F4" for e in prog["tenure_elapsed"]],
+        marker_color=["#FF3B30" if e else "#0A84FF" for e in prog["tenure_elapsed"]],
         text=prog["days_since_joining"].astype("Int64"), textposition="auto",
     ))
-    fig.add_vline(x=tenure_days, line_dash="dash", line_color="#5F6368")
+    fig.add_vline(x=tenure_days, line_dash="dash", line_color="#8E8E93")
     fig.update_yaxes(autorange="reversed")
     fig.update_layout(xaxis_title=f"Days since joining (dashed line = {tenure_days})")
     ui.show_chart(fig, height=max(240, 34 * len(prog)), legend=False)
@@ -305,11 +324,11 @@ def _daily_tab(main: pd.DataFrame, active: pd.DataFrame, config: dict) -> None:
     )
     fig = go.Figure()
     fig.add_bar(x=totals["day"], y=totals["orders"], name="Orders",
-                marker_color="#4285F4")
+                marker_color="#0A84FF")
     fig.add_bar(x=totals["day"], y=totals["undelivered"], name="Undelivered",
-                marker_color="#E37400")
+                marker_color="#FF9F0A")
     fig.add_bar(x=totals["day"], y=totals["cancelled"], name="Cancelled",
-                marker_color="#D93025")
+                marker_color="#FF3B30")
     fig.update_layout(barmode="overlay", title="Daily totals", yaxis_title="Orders")
     fig.update_traces(opacity=0.85)
     ui.show_chart(fig, height=300)
@@ -328,47 +347,54 @@ def _daily_tab(main: pd.DataFrame, active: pd.DataFrame, config: dict) -> None:
 # ---------------------------------------------------------------------------
 # Tenure alerts
 # ---------------------------------------------------------------------------
-def _alerts_tab(alerts: pd.DataFrame, tenure_days: int, symbol: str) -> None:
+def _alerts_tab(alerts: pd.DataFrame, tenure_days: int, idle_days: int,
+                cancel_pct: float) -> None:
     if alerts.empty:
         ui.callout(
-            [f"No active intern has passed their {tenure_days}-day tenure yet."],
-            "green", title="Nothing to review",
+            ["No clerical errors, idle interns, high cancellation rates or "
+             "overdue tenure reviews."],
+            "green", title="Nothing to action",
         )
         return
 
     ui.note(
-        f"Active interns whose joining date is more than {tenure_days} days ago. "
-        "Change the window on the Settings page."
+        f"Thresholds: tenure {tenure_days} days · idle after {idle_days} days "
+        f"with no orders · not-delivered above {cancel_pct:g}%. "
+        "All three are editable on the Settings page."
     )
-    for _, row in alerts.iterrows():
-        joined = row["joining_date"]
-        joined_txt = joined.strftime("%d %b %Y") if pd.notna(joined) else "unknown"
-        ui.alert_card(
-            f"{row['name']} - {int(row['days_over'])} days past the "
-            f"{tenure_days}-day mark",
-            f"This intern's {tenure_days}-day tenure period is over. Please review "
-            "their performance and take the required action.",
-            meta=(
-                f"Joined {joined_txt}  ·  {int(row['orders'])} orders  ·  "
-                f"{int(row['reviews_submitted'])} reviews submitted  ·  "
-                f"{int(row['cancelled'])} cancelled  ·  "
-                f"{int(row['undelivered'])} undelivered  ·  "
-                f"reflection {ui.fmt_pct(row['reflection_rate'])}"
-            ),
-            tone="red" if row["days_over"] >= tenure_days else "amber",
-        )
+
+    groups = [
+        ("clerical", "Clerical errors",
+         "The roster contradicts itself. Fix these in the sheet first - every "
+         "other intern number is derived from these dates."),
+        ("idle", "Active but not ordering",
+         f"On the roster as Active for more than {idle_days} days with no orders."),
+        ("cancellation", "Cancellation rate too high",
+         f"Cancelled plus undelivered above {cancel_pct:g}% of their orders."),
+        ("tenure", "Tenure review due",
+         f"Past the {tenure_days}-day mark and still Active."),
+    ]
+    for kind, title, blurb in groups:
+        sub = alerts[alerts["kind"] == kind]
+        ui.section(f"{title} ({len(sub)})", blurb)
+        if sub.empty:
+            ui.callout(["None."], "green")
+            continue
+        for _, row in sub.iterrows():
+            ui.alert_card(row["name"], row["message"], meta=row["detail"],
+                          tone=row["severity"])
 
     table = alerts.rename(columns={
-        "name": "Intern", "joining_date": "Joining date",
-        "days_since_joining": "Days since joining", "days_over": "Days over",
+        "name": "Intern", "label": "Alert", "severity": "Severity",
+        "message": "What is wrong", "detail": "Context", "status": "Status",
         "orders": "Orders", "cancelled": "Cancelled",
-        "undelivered": "Undelivered", "reviews_submitted": "Reviews submitted",
-        "reflection_rate": "Reflection %", "stipend": "Stipend",
-    })[["Intern", "Joining date", "Days since joining", "Days over", "Orders",
-        "Cancelled", "Undelivered", "Reviews submitted", "Reflection %", "Stipend"]]
-    table["Joining date"] = pd.to_datetime(table["Joining date"]).dt.strftime("%d %b %Y")
-    ui.show_table(table)
-    ui.download_row({"tenure alerts": table}, excel_name="tenure-alerts",
+        "undelivered": "Undelivered", "reviews_submitted": "Reviews",
+        "not_delivered_rate": "Not delivered %",
+    })[["Intern", "Alert", "Severity", "What is wrong", "Context", "Status",
+        "Orders", "Cancelled", "Undelivered", "Reviews", "Not delivered %"]]
+    ui.section("All alerts")
+    ui.show_table(table, height=420)
+    ui.download_row({"intern alerts": table}, excel_name="intern-alerts",
                     key_prefix="alerts")
 
 
@@ -403,8 +429,8 @@ def _scorecard_tab(bundle, main: pd.DataFrame, config: dict, display: dict) -> N
         fig = go.Figure(go.Bar(
             x=top["score"], y=top["intern"], orientation="h",
             marker_color=[
-                "#1E8E3E" if s >= 90 else "#4285F4" if s >= 75
-                else "#E37400" if s >= 60 else "#D93025" for s in top["score"]
+                "#34C759" if s >= 90 else "#0A84FF" if s >= 75
+                else "#FF9F0A" if s >= 60 else "#FF3B30" for s in top["score"]
             ],
             text=top["score"].round(1), textposition="auto",
         ))

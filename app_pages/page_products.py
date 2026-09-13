@@ -73,9 +73,9 @@ def render(bundle, config: dict, embedded: bool = False) -> None:
             top = by_product.head(15)
             fig = go.Figure()
             fig.add_bar(x=top["net_orders"], y=top["product"], orientation="h",
-                        name="Net", marker_color="#0F766E")
+                        name="Net", marker_color="#0A84FF")
             fig.add_bar(x=top["not_delivered"], y=top["product"], orientation="h",
-                        name="Not delivered", marker_color="#DC2626")
+                        name="Not delivered", marker_color="#FF3B30")
             fig.update_yaxes(autorange="reversed")
             fig.update_layout(barmode="stack", xaxis_title="Orders")
             ui.show_chart(fig, height=max(280, 30 * len(top)))
@@ -92,7 +92,7 @@ def render(bundle, config: dict, embedded: bool = False) -> None:
             fig = go.Figure(go.Bar(
                 x=top["total_orders"],
                 y=top["asin"] + " — " + top["Product"].fillna(""),
-                orientation="h", marker_color="#2563EB",
+                orientation="h", marker_color="#5E5CE6",
                 text=top["total_orders"], textposition="auto",
             ))
             fig.update_yaxes(autorange="reversed")
@@ -116,9 +116,9 @@ def render(bundle, config: dict, embedded: bool = False) -> None:
             ui.note(f"Targets for {month_label}, actuals counted live from MAIN.")
             fig = go.Figure()
             fig.add_bar(x=with_target["product"], y=with_target["target"],
-                        name="Target", marker_color="#94A3B8")
+                        name="Target", marker_color="#C7C7CC")
             fig.add_bar(x=with_target["product"], y=with_target["actual"],
-                        name="Actual", marker_color="#0F766E")
+                        name="Actual", marker_color="#0A84FF")
             fig.update_layout(barmode="group", yaxis_title="Orders")
             ui.show_chart(fig, height=300)
             view = with_target.rename(columns={

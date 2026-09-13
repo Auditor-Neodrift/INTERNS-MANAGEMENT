@@ -497,6 +497,8 @@ def intern_table(
     main: pd.DataFrame,
     roster: pd.DataFrame,
     tenure_days: int = 30,
+    idle_days: int = 3,
+    cancel_pct: float = 30.0,
     today: date | None = None,
 ) -> pd.DataFrame:
     """One row per intern: tenure, stipend and the order/review counts.
@@ -602,6 +604,63 @@ def intern_table(
     out["cancel_rate"] = _safe_ratio(100 * out["cancelled"], out["orders"]).round(1)
     out["undelivered_rate"] = _safe_ratio(100 * out["undelivered"], out["orders"]).round(1)
     out["orders_per_day"] = _safe_ratio(out["orders"], out["active_days"]).round(2)
+    out["not_delivered"] = out["cancelled"] + out["undelivered"]
+    out["not_delivered_rate"] = (
+        _safe_ratio(100 * out["not_delivered"], out["orders"]).round(1)
+    )
+
+    # ---- clerical contradictions in the roster itself
+    has_end = leave.notna()
+    out["has_end_date"] = has_end
+    ends_before_start = has_end & join.notna() & (leave <= join)
+    active_with_end = out["is_active"] & has_end
+    no_join = out["on_roster"] & join.isna()
+
+    reasons: list[list[str]] = [[] for _ in range(len(out))]
+    for pos, idx in enumerate(out.index):
+        if bool(ends_before_start.get(idx, False)):
+            reasons[pos].append(
+                "End date is on or before the joining date, so the tenure is "
+                "zero or negative"
+            )
+        elif bool(active_with_end.get(idx, False)):
+            end = leave.get(idx)
+            gone = (now - end).days if pd.notna(end) else None
+            when = pd.Timestamp(end).strftime("%d %b %Y") if pd.notna(end) else "a date"
+            if gone is not None and gone > 0:
+                reasons[pos].append(
+                    f"Still marked Active but the end date ({when}) passed "
+                    f"{gone} days ago"
+                )
+            else:
+                reasons[pos].append(
+                    f"Marked Active but already has an end date of {when}"
+                )
+        if bool(no_join.get(idx, False)):
+            reasons[pos].append("On the roster with no joining date recorded")
+    out["clerical_reasons"] = ["; ".join(r) for r in reasons]
+    out["clerical_error"] = out["clerical_reasons"] != ""
+
+    # ---- an active intern producing nothing
+    last = pd.to_datetime(out.get("last_order"), errors="coerce")
+    out["last_order"] = last
+    out["days_since_last_order"] = (now - last).dt.days
+    # With no orders at all, idleness is measured from the joining date.
+    out["idle_for_days"] = out["days_since_last_order"].fillna(
+        out["days_since_joining"]
+    )
+    out["no_orders"] = out["orders"] == 0
+    out["idle_alert"] = (
+        out["is_active"] & out["no_orders"]
+        & out["days_since_joining"].notna()
+        & (out["days_since_joining"] > float(idle_days))
+    )
+
+    # ---- fulfilment falling over
+    out["cancel_alert"] = (
+        out["is_active"] & (out["orders"] > 0)
+        & (out["not_delivered_rate"] > float(cancel_pct))
+    )
 
     return out.drop(columns=["_key"]).sort_values(
         ["is_active", "orders"], ascending=[False, False]
@@ -645,3 +704,104 @@ def tenure_alerts(interns: pd.DataFrame, tenure_days: int = 30) -> pd.DataFrame:
         return due
     due["days_over"] = due["days_since_joining"] - tenure_days
     return due.sort_values("days_over", ascending=False).reset_index(drop=True)
+
+
+ALERT_KINDS = {
+    "clerical": ("Clerical error", "red"),
+    "idle": ("Active but no orders", "red"),
+    "cancellation": ("Cancellation rate too high", "red"),
+    "tenure": ("Tenure review due", "amber"),
+}
+
+
+def intern_alerts(
+    interns: pd.DataFrame,
+    tenure_days: int = 30,
+    idle_days: int = 3,
+    cancel_pct: float = 30.0,
+) -> pd.DataFrame:
+    """Every intern-level alert as one long frame: kind, severity, message.
+
+    Kinds, worst first:
+      clerical     - the roster contradicts itself (Active yet an end date)
+      idle         - Active beyond the grace period with nothing ordered
+      cancellation - not-delivered rate above the configured ceiling
+      tenure       - past the tenure window and due a review
+    """
+    if interns is None or interns.empty:
+        return pd.DataFrame(columns=["name", "kind", "label", "severity",
+                                     "message", "detail", "sort"])
+
+    rows: list[dict] = []
+
+    def add(row, kind: str, message: str, detail: str) -> None:
+        label, severity = ALERT_KINDS[kind]
+        rows.append({
+            "name": row["name"], "kind": kind, "label": label,
+            "severity": severity, "message": message, "detail": detail,
+            "status": row.get("status", ""),
+            "orders": int(row.get("orders", 0) or 0),
+            "cancelled": int(row.get("cancelled", 0) or 0),
+            "undelivered": int(row.get("undelivered", 0) or 0),
+            "reviews_submitted": int(row.get("reviews_submitted", 0) or 0),
+            "not_delivered_rate": row.get("not_delivered_rate"),
+            "joining_date": row.get("joining_date"),
+            "leaving_date": row.get("leaving_date"),
+            "is_active": bool(row.get("is_active", False)),
+            "sort": {"clerical": 0, "idle": 1, "cancellation": 2, "tenure": 3}[kind],
+        })
+
+    for _, row in interns.iterrows():
+        joined = row.get("joining_date")
+        joined_txt = (
+            pd.Timestamp(joined).strftime("%d %b %Y") if pd.notna(joined) else "unknown"
+        )
+
+        if row.get("clerical_error"):
+            add(row, "clerical", str(row.get("clerical_reasons", "")),
+                f"Status {row.get('status', '')}  ·  joined {joined_txt}")
+
+        if row.get("idle_alert"):
+            days = row.get("days_since_joining")
+            days_txt = int(days) if pd.notna(days) else "?"
+            add(row, "idle",
+                f"Active for {days_txt} days and has not placed a single order.",
+                f"Joined {joined_txt}  ·  more than {idle_days} days ago")
+
+        if row.get("cancel_alert"):
+            rate = row.get("not_delivered_rate")
+            add(row, "cancellation",
+                f"{_fmt_pct(rate)} of orders did not reach the buyer, "
+                f"above the {cancel_pct:g}% ceiling.",
+                f"{int(row.get('orders', 0))} orders  ·  "
+                f"{int(row.get('cancelled', 0))} cancelled  ·  "
+                f"{int(row.get('undelivered', 0))} undelivered")
+
+        if row.get("tenure_elapsed"):
+            over = row.get("days_since_joining")
+            over_txt = int(over) - tenure_days if pd.notna(over) else "?"
+            add(row, "tenure",
+                f"This intern's {tenure_days}-day tenure period is over. Please "
+                "review their performance and take the required action.",
+                f"Joined {joined_txt}  ·  {over_txt} days past the mark  ·  "
+                f"{int(row.get('orders', 0))} orders  ·  "
+                f"{int(row.get('reviews_submitted', 0))} reviews")
+
+    out = pd.DataFrame(rows)
+    if out.empty:
+        return out
+    # Active interns first inside each kind - a live contradiction matters more
+    # than a historical one on someone who already left.
+    out["_active_first"] = (~out["is_active"]).astype(int)
+    return (
+        out.sort_values(["sort", "_active_first", "name"])
+        .drop(columns=["_active_first"])
+        .reset_index(drop=True)
+    )
+
+
+def _fmt_pct(value) -> str:
+    try:
+        return f"{float(value):.1f}%"
+    except (TypeError, ValueError):
+        return "-"

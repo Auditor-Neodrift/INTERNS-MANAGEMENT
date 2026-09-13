@@ -112,10 +112,10 @@ def render(bundle, config: dict, embedded: bool = False) -> None:
         labels = series["month_label"]
         fig = go.Figure()
         fig.add_bar(x=labels, y=series["returned"], name="Returned orders",
-                    marker_color="#D97706")
+                    marker_color="#FF9F0A")
         fig.add_scatter(x=labels, y=series["return_rate"], name="Return rate %",
                         mode="lines+markers", yaxis="y2",
-                        line=dict(color="#DC2626", width=2))
+                        line=dict(color="#FF3B30", width=2))
         fig.update_layout(
             yaxis_title="Returned orders",
             yaxis2=dict(title="%", overlaying="y", side="right",
@@ -161,7 +161,7 @@ def render(bundle, config: dict, embedded: bool = False) -> None:
             }).sort_values("Returned", ascending=False)
             fig = go.Figure(go.Bar(
                 x=view["Returned"].head(12), y=view["Product"].head(12),
-                orientation="h", marker_color="#D97706",
+                orientation="h", marker_color="#FF9F0A",
                 text=view["Returned"].head(12), textposition="auto",
             ))
             fig.update_yaxes(autorange="reversed")

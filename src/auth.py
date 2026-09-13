@@ -82,33 +82,46 @@ See `.streamlit/secrets.toml.example` in the repository for the full walkthrough
     st.stop()
 
 
-def _sign_in_screen(provider: str | None) -> None:
-    st.title("NEODRIFT Interns Audit")
+def _centred_card(mark: str, title: str, subtitle: str, footer: str) -> None:
+    """The glass panel behind the sign-in and refusal screens."""
     st.markdown(
-        "This dashboard contains internal order, payment and intern data. "
-        "Sign in with an authorised Google account to continue."
+        f'<div class="signin-wrap"><div class="signin-card">'
+        f'<div class="signin-mark">{mark}</div>'
+        f'<div class="signin-title">{title}</div>'
+        f'<div class="signin-sub">{subtitle}</div>'
+        f'<div class="signin-foot">{footer}</div>'
+        f"</div></div>",
+        unsafe_allow_html=True,
     )
-    left, _ = st.columns([1, 2])
-    with left:
+
+
+def _sign_in_screen(provider: str | None) -> None:
+    _centred_card(
+        "ND",
+        "NEODRIFT Interns Audit",
+        "This dashboard holds internal order, payment and intern data. "
+        "Sign in with an authorised Google account to continue.",
+        "Access is limited to approved NEODRIFT accounts.",
+    )
+    # The button sits in the middle column so it lines up under the card.
+    _, middle, _ = st.columns([1, 1.15, 1])
+    with middle:
         if st.button("Sign in with Google", type="primary",
                      width="stretch", icon=":material/login:"):
             st.login(provider) if provider else st.login()
-    st.caption("Access is limited to three approved NEODRIFT accounts.")
     st.stop()
 
 
 def _denied_screen(email: str) -> None:
-    st.title("You do not have access")
-    st.error(
-        f"**{email}** is not on the access list for this dashboard.",
-        icon=":material/block:",
+    _centred_card(
+        "!",
+        "You do not have access",
+        f"<strong>{email}</strong> is not on the access list for this dashboard. "
+        "Ask the NEODRIFT admin to add your address, then sign in again.",
+        "Signed in, but not authorised.",
     )
-    st.markdown(
-        "If you should have access, ask the NEODRIFT admin to add your address, "
-        "then sign in again."
-    )
-    left, _ = st.columns([1, 2])
-    with left:
+    _, middle, _ = st.columns([1, 1.15, 1])
+    with middle:
         if st.button("Sign out", width="stretch", icon=":material/logout:"):
             st.logout()
     st.stop()
