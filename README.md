@@ -5,23 +5,22 @@ Google Sheets and turns it into a KPI dashboard, automated monthly reports, a
 money audit, a returns report, intern scorecards and a configurable exception
 engine. Built to be read on a phone as easily as on a laptop.
 
-The app never writes to the sheet. It only reads.
+The app only ever **reads** the audit workbook — it never writes to it.
+The one thing it writes is influencer leads, and those go to a **separate**
+Google Sheet of their own.
 
 ---
 
 ## What it shows
 
-| Page | What it answers |
-|---|---|
-| **Dashboard** | One screen for a stand-up: a month you pick, the month before it, the last 7 days, and the money at risk right now. |
-| **Monthly Report** | The automated write-up for one month, with month-on-month deltas and breakdowns by intern, product, status and target. |
-| **Overall Audit Report** | Every month in one graded matrix, plus a reconciliation against the workbook's own `Overall Audit Report` tab. |
-| **Payments & Money** | What has been paid, what is still owed, and what is exposed because money went out before the review came back. |
-| **Returns Report** | Return rate by month, product and intern, with sign-off and pickup gaps. |
-| **Intern Report** | Roster status plus a 0–100 scorecard per intern, and a drill-down on any one person. |
-| **Products & ASINs** | Product and ASIN performance, target vs actual, SKU spread, and cross-checks against the `ASIN REPORT` tab. |
-| **Audit & Exceptions** | Every row-level rule violation, filterable and exportable. |
-| **Settings** | The green/amber/red limits and the audit rules — all editable in the browser. |
+| Area | Tabs | What it answers |
+|---|---|---|
+| **Dashboard** | — | A month you pick, the month before it, the last 7 days, who is active now, and the money at risk. |
+| **Interns** | Active now · All interns · Daily activity · Tenure alerts · Scorecards | How many interns are active, what each produced per day, and who is past their tenure window. |
+| **Orders & Audit** | Monthly · Overall · Returns · Products & ASINs · Exceptions | All order-side reporting and the row-level exception engine. |
+| **Payments & Money** | — | What has been paid, what is owed, and what is exposed. |
+| **Influencers** | Submit a lead · Pipeline · Follow-ups · Setup | Sourcing with duplicate detection, plus the admin pipeline. |
+| **Settings** | KPI limits · Audit rules · Display & data · Save/load | Every green/amber/red limit and audit rule. |
 
 Every table exports to CSV, and each page offers a combined Excel workbook.
 
@@ -139,6 +138,65 @@ after new KPIs or rules are added.
 
 ---
 
+## Interns
+
+The **Interns** area answers "who is working and how are they doing".
+
+Per intern: joining date, end date, tenure length, stipend, orders completed,
+cancelled, undelivered, reviews submitted and reflected, plus current status.
+
+**Cancelled and undelivered are separate columns, deliberately.**
+
+| Column | Meaning |
+|---|---|
+| Cancelled | Amazon status is literally `Cancelled` — the order was called off |
+| Undelivered | Every other non-delivered state: returns, stuck in transit, no status yet |
+
+Lumping them together flatters a parcel that is merely late and punishes an
+intern for a customer's cancellation. They sum to the not-delivered total used
+elsewhere in the app.
+
+**Tenure reminder.** Any *Active* intern whose joining date is more than 30 days
+ago raises a standing reminder on the Dashboard and the Interns page:
+
+> This intern's 30-day tenure period is over. Please review their performance
+> and take the required action.
+
+It is a persistent banner rather than a modal, so it survives a page refresh and
+cannot be dismissed by accident. The 30-day window is editable under
+Settings → *Display & data*.
+
+**Daily activity** shows orders per intern per day over a window you choose, so
+a drop-off is visible within days rather than at month end.
+
+> Stipend comes from the roster tab and is currently filled for 32 of 85
+> interns, none of them the 9 active ones. Those totals will understate the real
+> cost until the column is filled in.
+
+## Influencers
+
+Interns paste a profile link; the app canonicalises it and checks it against
+every existing lead before saving. These all resolve to the same lead:
+
+```
+https://www.instagram.com/moto.wrist?igshid=abc
+instagram.com/Moto.Wrist/
+https://m.instagram.com/moto.wrist
+```
+
+A duplicate is rejected on screen with the lead ID, the intern who sourced it
+first, the date, and its current pipeline status. A new lead is saved with the
+intern's name, a timestamp and status `New`. Links to a post or reel are
+rejected with a prompt to use the profile link instead.
+
+Admins manage contact details, quoted and agreed rates, pipeline status,
+follow-up notes and next follow-up dates in an editable grid, filter by status,
+intern, platform, rate and date, and export the filtered set.
+
+Leads live in **their own Google Sheet**, written through a service account.
+Setup is on the Influencers → *Setup* tab; until it is connected the page
+explains what is needed instead of failing.
+
 ## Access control
 
 The app is gated behind Google sign-in. Nothing loads — no data, no navigation
@@ -216,22 +274,26 @@ requirements.txt
 config/thresholds.json      saved KPI limits and audit rules
 src/
   data.py                   Google Sheets loaders and normalisation
-  metrics.py                KPI computation, periods, breakdowns, variance
+  metrics.py                KPIs, periods, breakdowns, intern table, tenure
   audit.py                  the row-level rule engine
+  influencers.py            lead store: URL canonicalisation, read/write
   settings_store.py         default limits, rules, load/save, grading
+  theme.py                  Gemini-style CSS and the motion-blur reveal
   ui.py                     responsive KPI cards, chips, charts, exports
   auth.py                   Google sign-in gate and email allow-list
 app_pages/
   common.py                 cached audit runs and shared KPI blocks
-  page_dashboard.py
-  page_monthly.py
-  page_overall.py
-  page_money.py
-  page_returns.py
-  page_interns.py
-  page_products.py
-  page_exceptions.py
-  page_settings.py
+  page_dashboard.py         Dashboard
+  page_interns.py           Interns (5 tabs)
+  page_audit.py             Orders & Audit shell (5 tabs)
+  page_monthly.py           - embedded: monthly report
+  page_overall.py           - embedded: overall report
+  page_returns.py           - embedded: returns
+  page_products.py          - embedded: products & ASINs
+  page_exceptions.py        - embedded: exceptions
+  page_money.py             Payments & Money
+  page_influencers.py       Influencers (4 tabs)
+  page_settings.py          Settings
 ```
 
 ## Notes

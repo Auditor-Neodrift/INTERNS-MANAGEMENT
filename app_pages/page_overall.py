@@ -39,9 +39,10 @@ GRADED_COLUMNS = {
 }
 
 
-def render(bundle, config: dict) -> None:
+def render(bundle, config: dict, embedded: bool = False) -> None:
     main = bundle.main
-    st.title("Overall Audit Report")
+    if not embedded:
+        st.title("Overall Audit Report")
     ui.note(
         "Month-by-month summary for the whole book. The app recomputes every "
         "figure from MAIN and compares it with the workbook's own "

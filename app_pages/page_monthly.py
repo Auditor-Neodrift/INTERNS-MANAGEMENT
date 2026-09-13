@@ -11,12 +11,14 @@ import metrics
 import ui
 
 
-def render(bundle, config: dict) -> None:
+def render(bundle, config: dict, embedded: bool = False) -> None:
     main = bundle.main
     display = config.get("display", {})
     symbol = display.get("currency_symbol", "Rs")
 
-    st.title("Monthly Report")
+    if not embedded:
+
+        st.title("Monthly Report")
     ui.note(
         "Everything on this page is computed live from the MAIN tab for the month "
         "you pick. Green, amber and red follow the limits set on the Settings page."

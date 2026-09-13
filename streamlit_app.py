@@ -119,24 +119,18 @@ def _page(module_name: str, func_name: str = "render"):
     return runner
 
 
+# Six areas, each with its own tabs, rather than a long flat page list.
 PAGES = [
-    # The default page is served at "/", so it takes no url_path of its own.
     st.Page(_page("page_dashboard"), title="Dashboard",
             icon=":material/dashboard:", default=True),
-    st.Page(_page("page_monthly"), title="Monthly Report",
-            icon=":material/calendar_month:", url_path="monthly"),
-    st.Page(_page("page_overall"), title="Overall Audit Report",
-            icon=":material/table_chart:", url_path="overall"),
+    st.Page(_page("page_interns"), title="Interns",
+            icon=":material/groups:", url_path="interns"),
+    st.Page(_page("page_audit"), title="Orders & Audit",
+            icon=":material/fact_check:", url_path="audit"),
     st.Page(_page("page_money"), title="Payments & Money",
             icon=":material/payments:", url_path="money"),
-    st.Page(_page("page_returns"), title="Returns Report",
-            icon=":material/assignment_return:", url_path="returns"),
-    st.Page(_page("page_interns"), title="Intern Report",
-            icon=":material/groups:", url_path="interns"),
-    st.Page(_page("page_products"), title="Products & ASINs",
-            icon=":material/inventory_2:", url_path="products"),
-    st.Page(_page("page_exceptions"), title="Audit & Exceptions",
-            icon=":material/rule:", url_path="exceptions"),
+    st.Page(_page("page_influencers"), title="Influencers",
+            icon=":material/campaign:", url_path="influencers"),
     st.Page(_page("page_settings"), title="Settings",
             icon=":material/settings:", url_path="settings"),
 ]

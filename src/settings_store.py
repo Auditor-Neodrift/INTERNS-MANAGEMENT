@@ -222,6 +222,7 @@ DEFAULT_DISPLAY: dict[str, Any] = {
     "week_days": 7,
     "currency_symbol": "Rs",
     "intern_min_orders_for_grading": 5,
+    "tenure_days": 30,
 }
 
 DEFAULTS: dict[str, Any] = {

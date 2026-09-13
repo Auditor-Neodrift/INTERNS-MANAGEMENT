@@ -477,3 +477,171 @@ def audit_variance(main: pd.DataFrame, overall: pd.DataFrame) -> pd.DataFrame:
         return out
     out["match"] = out["difference"] == 0
     return out
+
+
+# ---------------------------------------------------------------------------
+# Intern roster + tenure
+# ---------------------------------------------------------------------------
+ACTIVE_STATUSES = ("active",)
+CLOSED_STATUSES = ("completed", "terminate", "terminated", "drop out", "dropout", "inactive")
+
+
+def _roster_key(series: pd.Series) -> pd.Series:
+    return (
+        series.fillna("").astype(str).str.strip().str.casefold()
+        .str.replace(r"\s+", " ", regex=True)
+    )
+
+
+def intern_table(
+    main: pd.DataFrame,
+    roster: pd.DataFrame,
+    tenure_days: int = 30,
+    today: date | None = None,
+) -> pd.DataFrame:
+    """One row per intern: tenure, stipend and the order/review counts.
+
+    Cancelled and undelivered are deliberately separate columns:
+      cancelled   = Amazon status is literally "Cancelled"
+      undelivered = every other non-delivered state (returns, stuck, blank)
+    so a genuine customer cancellation is not confused with a parcel that is
+    merely still in transit.
+    """
+    today = today or date.today()
+    now = pd.Timestamp(today)
+
+    if roster is None or roster.empty:
+        base = pd.DataFrame(columns=["name", "status", "joining_date",
+                                     "leaving_date", "stipend", "remark"])
+    else:
+        base = roster.copy()
+    base["_key"] = _roster_key(base.get("name", pd.Series(dtype=str)))
+    base = base[base["_key"] != ""].drop_duplicates("_key", keep="first")
+
+    # Per-intern order facts, keyed the same way so spelling variants line up.
+    if main is None or main.empty:
+        facts = pd.DataFrame(columns=["_key", "orders", "delivered", "cancelled",
+                                      "undelivered", "returned", "reviews_submitted",
+                                      "reviews_reflected", "order_value", "first_order",
+                                      "last_order", "active_days"])
+    else:
+        work = main.copy()
+        work["_key"] = _roster_key(work["intern"])
+        work["_undelivered"] = work["not_delivered"] & ~work["true_cancelled"]
+        facts = (
+            work.groupby("_key")
+            .agg(
+                orders=("order_id", "size"),
+                delivered=("delivered", "sum"),
+                cancelled=("true_cancelled", "sum"),
+                undelivered=("_undelivered", "sum"),
+                returned=("returned", "sum"),
+                reviews_submitted=("review_submitted", "sum"),
+                reviews_reflected=("reflected", "sum"),
+                order_value=("order_price", "sum"),
+                first_order=("order_date", "min"),
+                last_order=("order_date", "max"),
+                active_days=("ym", "size"),
+            )
+            .reset_index()
+        )
+        days = (
+            work.dropna(subset=["order_date"])
+            .groupby("_key")["order_date"].nunique()
+            .rename("active_days").reset_index()
+        )
+        facts = facts.drop(columns=["active_days"]).merge(days, on="_key", how="left")
+        names = work.groupby("_key")["intern"].first().rename("main_name").reset_index()
+        facts = facts.merge(names, on="_key", how="left")
+
+    out = base.merge(facts, on="_key", how="outer")
+    if "main_name" in out.columns:
+        out["name"] = out["name"].fillna(out["main_name"])
+        out = out.drop(columns=["main_name"])
+    out["name"] = out["name"].fillna("(unnamed)")
+    out["on_roster"] = out["status"].notna()
+    out["status"] = out["status"].fillna("Not on roster")
+
+    count_cols = ["orders", "delivered", "cancelled", "undelivered", "returned",
+                  "reviews_submitted", "reviews_reflected", "active_days"]
+    for col in count_cols:
+        out[col] = pd.to_numeric(out.get(col), errors="coerce").fillna(0).astype(int)
+    out["order_value"] = pd.to_numeric(out.get("order_value"), errors="coerce").fillna(0.0)
+    out["stipend"] = pd.to_numeric(out.get("stipend"), errors="coerce")
+
+    status_l = out["status"].astype(str).str.strip().str.casefold()
+    out["is_active"] = status_l.isin(ACTIVE_STATUSES)
+
+    # ---- tenure
+    join = pd.to_datetime(out.get("joining_date"), errors="coerce")
+    leave = pd.to_datetime(out.get("leaving_date"), errors="coerce")
+    out["joining_date"] = join
+    out["leaving_date"] = leave
+    out["tenure_end"] = leave.fillna(join + pd.Timedelta(days=tenure_days))
+    out["days_since_joining"] = (now - join).dt.days
+    out["days_to_tenure_end"] = (out["tenure_end"] - now).dt.days
+    out["tenure_days_served"] = np.where(
+        leave.notna(), (leave - join).dt.days, out["days_since_joining"]
+    )
+    out["tenure_elapsed"] = (
+        out["is_active"] & join.notna() & (out["days_since_joining"] >= tenure_days)
+    )
+    out["tenure_due_soon"] = (
+        out["is_active"] & join.notna() & ~out["tenure_elapsed"]
+        & (out["days_since_joining"] >= max(tenure_days - 7, 0))
+    )
+
+    # ---- rates
+    out["reflection_rate"] = (
+        _safe_ratio(100 * out["reviews_reflected"], out["reviews_submitted"]).round(1)
+    )
+    out["submission_rate"] = (
+        _safe_ratio(100 * out["reviews_submitted"], out["delivered"]).round(1)
+    )
+    out["delivery_rate"] = _safe_ratio(100 * out["delivered"], out["orders"]).round(1)
+    out["cancel_rate"] = _safe_ratio(100 * out["cancelled"], out["orders"]).round(1)
+    out["undelivered_rate"] = _safe_ratio(100 * out["undelivered"], out["orders"]).round(1)
+    out["orders_per_day"] = _safe_ratio(out["orders"], out["active_days"]).round(2)
+
+    return out.drop(columns=["_key"]).sort_values(
+        ["is_active", "orders"], ascending=[False, False]
+    ).reset_index(drop=True)
+
+
+def intern_daily(main: pd.DataFrame, names: list[str] | None = None) -> pd.DataFrame:
+    """Orders per intern per calendar day, with review counts alongside."""
+    if main is None or main.empty:
+        return pd.DataFrame(columns=["day", "intern", "orders", "delivered",
+                                     "cancelled", "undelivered", "reviews_submitted"])
+    work = main.dropna(subset=["order_date"]).copy()
+    if names:
+        keys = {n.strip().casefold() for n in names}
+        work = work[_roster_key(work["intern"]).isin(keys)]
+    if work.empty:
+        return pd.DataFrame(columns=["day", "intern", "orders", "delivered",
+                                     "cancelled", "undelivered", "reviews_submitted"])
+    work["day"] = work["order_date"].dt.date
+    work["_undelivered"] = work["not_delivered"] & ~work["true_cancelled"]
+    return (
+        work.groupby(["day", "intern"], as_index=False)
+        .agg(
+            orders=("order_id", "size"),
+            delivered=("delivered", "sum"),
+            cancelled=("true_cancelled", "sum"),
+            undelivered=("_undelivered", "sum"),
+            reviews_submitted=("review_submitted", "sum"),
+            value=("order_price", "sum"),
+        )
+        .sort_values(["day", "orders"], ascending=[False, False])
+    )
+
+
+def tenure_alerts(interns: pd.DataFrame, tenure_days: int = 30) -> pd.DataFrame:
+    """Active interns whose tenure window has elapsed - newest joiners last."""
+    if interns.empty or "tenure_elapsed" not in interns.columns:
+        return pd.DataFrame()
+    due = interns[interns["tenure_elapsed"]].copy()
+    if due.empty:
+        return due
+    due["days_over"] = due["days_since_joining"] - tenure_days
+    return due.sort_values("days_over", ascending=False).reset_index(drop=True)

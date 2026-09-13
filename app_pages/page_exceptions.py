@@ -10,11 +10,13 @@ import common
 import ui
 
 
-def render(bundle, config: dict) -> None:
+def render(bundle, config: dict, embedded: bool = False) -> None:
     main = bundle.main
     symbol = config.get("display", {}).get("currency_symbol", "Rs")
 
-    st.title("Audit & Exceptions")
+    if not embedded:
+
+        st.title("Audit & Exceptions")
     ui.note(
         "Every enabled rule from the Settings page, applied to each order row. "
         "Red means fix it; amber means check it. Turn rules off or retune their "

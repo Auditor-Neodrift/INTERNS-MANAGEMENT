@@ -19,11 +19,13 @@ SCOPES = {"All time": "all", "Selected month": "month",
           "Last 90 days": "d90", "Last 30 days": "d30"}
 
 
-def render(bundle, config: dict) -> None:
+def render(bundle, config: dict, embedded: bool = False) -> None:
     main = bundle.main
     symbol = config.get("display", {}).get("currency_symbol", "Rs")
 
-    st.title("Returns Report")
+    if not embedded:
+
+        st.title("Returns Report")
     ui.note(
         "Built from the return trail inside MAIN: an Amazon status of "
         "'Returned to Seller' or 'Returning to Seller', plus the "

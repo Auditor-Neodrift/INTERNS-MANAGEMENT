@@ -332,6 +332,12 @@ def _display_tab(config: dict) -> None:
         value=int(display.get("intern_min_orders_for_grading", 5)),
         min_value=1, max_value=100, step=1, key="d_minorders",
     )
+    display["tenure_days"] = st.number_input(
+        "Intern tenure window (days)",
+        value=int(display.get("tenure_days", 30)),
+        min_value=1, max_value=365, step=1, key="d_tenure",
+        help="An active intern past this many days since joining raises a tenure review reminder.",
+    )
     display["currency_symbol"] = st.text_input(
         "Currency label", value=display.get("currency_symbol", "Rs"),
         max_chars=4, key="d_symbol",

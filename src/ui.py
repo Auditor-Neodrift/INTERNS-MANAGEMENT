@@ -16,91 +16,14 @@ import plotly.graph_objects as go
 import streamlit as st
 
 from settings_store import grade
+from theme import CSS as BASE_CSS
 
 SEVERITY_ORDER = {"red": 0, "amber": 1, "ok": 2, "neutral": 3}
 
 CHART_COLORWAY = [
-    "#0F766E", "#2563EB", "#D97706", "#DC2626", "#7C3AED",
-    "#0891B2", "#65A30D", "#DB2777", "#475569", "#B45309",
+    "#4285F4", "#9B72CB", "#D96570", "#1E8E3E", "#E37400",
+    "#12B5CB", "#7C6BD1", "#F9AB00", "#5F6368", "#A8518A",
 ]
-
-BASE_CSS = """
-<style>
-  /* ---- layout ---- */
-  .block-container { padding-top: 1.4rem; padding-bottom: 3rem; max-width: 1500px; }
-  footer, #MainMenu { visibility: hidden; }
-  h1, h2, h3 { letter-spacing: -0.01em; }
-
-  /* ---- KPI grid: wraps on mobile, spreads on desktop ---- */
-  .kpi-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(168px, 1fr));
-    gap: 0.65rem;
-    margin: 0.35rem 0 1.1rem 0;
-  }
-  .kpi-card {
-    background: #FFFFFF;
-    border: 1px solid #E2E8F0;
-    border-left: 4px solid var(--accent, #64748B);
-    border-radius: 10px;
-    padding: 0.7rem 0.85rem;
-    box-shadow: 0 1px 2px rgba(15,23,42,0.04);
-    min-width: 0;
-  }
-  .kpi-label {
-    font-size: 0.72rem; font-weight: 600; text-transform: uppercase;
-    letter-spacing: 0.04em; color: #64748B; margin-bottom: 0.28rem;
-    line-height: 1.25; overflow-wrap: break-word;
-  }
-  .kpi-value {
-    font-size: 1.5rem; font-weight: 700; line-height: 1.15;
-    color: var(--accent, #0F172A); overflow-wrap: break-word;
-  }
-  .kpi-sub { font-size: 0.74rem; color: #64748B; margin-top: 0.2rem; line-height: 1.3; }
-  .kpi-delta { font-size: 0.76rem; font-weight: 600; margin-top: 0.22rem; }
-  .kpi-delta.up { color: #059669; }
-  .kpi-delta.down { color: #DC2626; }
-  .kpi-delta.flat { color: #64748B; }
-
-  /* ---- chips ---- */
-  .chip {
-    display: inline-block; padding: 0.16rem 0.55rem; border-radius: 999px;
-    font-size: 0.73rem; font-weight: 600; margin: 0.12rem 0.25rem 0.12rem 0;
-    border: 1px solid transparent; white-space: nowrap;
-  }
-  .chip-red   { background: #FEF2F2; color: #B91C1C; border-color: #FECACA; }
-  .chip-amber { background: #FFFBEB; color: #B45309; border-color: #FDE68A; }
-  .chip-green { background: #ECFDF5; color: #047857; border-color: #A7F3D0; }
-  .chip-grey  { background: #F1F5F9; color: #475569; border-color: #E2E8F0; }
-
-  /* ---- callout ---- */
-  .callout {
-    border-radius: 10px; padding: 0.7rem 0.9rem; margin: 0.3rem 0 0.9rem 0;
-    font-size: 0.88rem; border: 1px solid #E2E8F0; background: #F8FAFC;
-  }
-  .callout.red   { background: #FEF2F2; border-color: #FECACA; }
-  .callout.amber { background: #FFFBEB; border-color: #FDE68A; }
-  .callout.green { background: #ECFDF5; border-color: #A7F3D0; }
-  .callout ul { margin: 0.3rem 0 0 1.1rem; padding: 0; }
-  .callout li { margin: 0.16rem 0; }
-
-  .section-note { color: #64748B; font-size: 0.85rem; margin: -0.35rem 0 0.75rem 0; }
-  .src-note { color: #94A3B8; font-size: 0.76rem; margin-top: 0.4rem; }
-
-  /* ---- phones ---- */
-  @media (max-width: 640px) {
-    .block-container { padding-left: 0.75rem; padding-right: 0.75rem; padding-top: 0.9rem; }
-    .kpi-grid { grid-template-columns: repeat(auto-fit, minmax(132px, 1fr)); gap: 0.5rem; }
-    .kpi-card { padding: 0.55rem 0.6rem; border-radius: 8px; }
-    .kpi-value { font-size: 1.18rem; }
-    .kpi-label { font-size: 0.66rem; }
-    h1 { font-size: 1.4rem !important; }
-    h2 { font-size: 1.15rem !important; }
-    h3 { font-size: 1rem !important; }
-    div[data-testid="stMetricValue"] { font-size: 1.1rem; }
-  }
-</style>
-"""
 
 
 def inject_css() -> None:
@@ -199,10 +122,10 @@ def _band_text(spec: dict) -> str:
 
 def _colour(severity: str, display: dict) -> str:
     return {
-        "red": display.get("red_hex", "#DC2626"),
-        "amber": display.get("amber_hex", "#D97706"),
-        "green": display.get("green_hex", "#059669"),
-    }.get(severity, display.get("neutral_hex", "#64748B"))
+        "red": display.get("red_hex", "#D93025"),
+        "amber": display.get("amber_hex", "#E37400"),
+        "green": display.get("green_hex", "#1E8E3E"),
+    }.get(severity, display.get("neutral_hex", "#5F6368"))
 
 
 def render_kpis(cards: Sequence[dict], config: dict | None = None) -> None:
@@ -278,6 +201,28 @@ def callout(lines: Sequence[str], tone: str = "grey", title: str | None = None) 
     )
 
 
+def hero(title: str, subtitle: str) -> None:
+    """Gradient-tinted intro panel used at the top of each area."""
+    st.markdown(
+        f'<div class="g-hero"><div class="g-hero-title">{html.escape(title)}</div>'
+        f'<div class="g-hero-sub">{html.escape(subtitle)}</div></div>',
+        unsafe_allow_html=True,
+    )
+
+
+def alert_card(title: str, text: str, meta: str = "", tone: str = "amber") -> None:
+    """Standing reminder banner (used by the 30-day tenure alerts)."""
+    meta_html = f'<div class="g-alert-meta">{html.escape(meta)}</div>' if meta else ""
+    st.markdown(
+        f'<div class="g-alert {"red" if tone == "red" else ""}">'
+        f'<div class="g-alert-body">'
+        f'<div class="g-alert-title">{html.escape(title)}</div>'
+        f'<div class="g-alert-text">{html.escape(text)}</div>{meta_html}'
+        f"</div></div>",
+        unsafe_allow_html=True,
+    )
+
+
 def note(text: str) -> None:
     st.markdown(f'<div class="section-note">{html.escape(text)}</div>',
                 unsafe_allow_html=True)
@@ -348,7 +293,7 @@ def threshold_bands(
     if not spec:
         return fig
     mode = spec.get("mode")
-    green_hex = display.get("green_hex", "#059669")
+    green_hex = display.get("green_hex", "#1E8E3E")
 
     marks = [
         float(spec[k]) for k in ("green", "amber", "min", "max")

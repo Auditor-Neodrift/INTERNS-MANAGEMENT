@@ -23,11 +23,12 @@ def render(bundle, config: dict) -> None:
     main = bundle.main
     symbol = config.get("display", {}).get("currency_symbol", "Rs")
 
-    st.title("Payments & Money Audit")
-    ui.note(
-        "Order value is what the company funds per order (ORDER PRICE). "
-        "Payment state is read from the free-text REVIEW PAYMENT column and "
-        "folded into PAID / PENDING / CANCELLED / HOLD / UNKNOWN."
+    st.title("Payments & Money")
+    ui.hero(
+        "What has been paid, what is owed, and what is exposed",
+        "Order value is what the company funds per order. Payment state is read "
+        "from the free-text REVIEW PAYMENT column and folded into PAID, PENDING, "
+        "CANCELLED, HOLD or UNKNOWN.",
     )
     if main.empty:
         ui.empty_state("No order rows found in the MAIN tab.")

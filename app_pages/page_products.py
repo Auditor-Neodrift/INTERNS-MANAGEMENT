@@ -20,9 +20,10 @@ GRADED = {
 }
 
 
-def render(bundle, config: dict) -> None:
+def render(bundle, config: dict, embedded: bool = False) -> None:
     main = bundle.main
-    st.title("Products & ASINs")
+    if not embedded:
+        st.title("Products & ASINs")
     ui.note(
         "Product and ASIN performance counted live from MAIN, with the "
         "'ASIN REPORT' and 'MONTHLY TARGETS REPORT' tabs used for cross-checks."

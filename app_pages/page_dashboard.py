@@ -22,6 +22,11 @@ def render(bundle, config: dict) -> None:
     week_days = int(display.get("week_days", 7) or 7)
 
     st.title("Interns Order Audit Dashboard")
+    ui.hero(
+        "One screen to run the stand-up from",
+        "A month you pick, the month before it, the last seven days, who is "
+        "active right now, and the money at risk.",
+    )
     if main.empty:
         ui.empty_state("No order rows found in the MAIN tab.")
         return
@@ -97,6 +102,54 @@ def render(bundle, config: dict) -> None:
         ],
         config,
     )
+
+    # ---- who is active right now ---------------------------------------
+    tenure_days = int(display.get("tenure_days", 30) or 30)
+    interns = metrics.intern_table(main, bundle.roster, tenure_days=tenure_days)
+    active = interns[interns["is_active"]]
+    due = metrics.tenure_alerts(interns, tenure_days=tenure_days)
+
+    ui.section(
+        "Active interns",
+        "From the roster tab, with work counted live. Full detail on the Interns page.",
+    )
+    if active.empty:
+        ui.empty_state("Nobody on the roster is marked Active.")
+    else:
+        week_orders = metrics.intern_daily(metrics.slice_last_days(main, week_days))
+        names = set(active["name"].str.casefold())
+        week_orders = (
+            week_orders[week_orders["intern"].str.casefold().isin(names)]
+            if not week_orders.empty else week_orders
+        )
+        ui.render_kpis(
+            [
+                ui.kpi("Active Interns", len(active), unit="n", tone="green"),
+                ui.kpi(f"Their Orders ({week_days}d)",
+                       int(week_orders["orders"].sum()) if not week_orders.empty else 0,
+                       unit="n", tone="neutral"),
+                ui.kpi("Orders This Tenure", int(active["orders"].sum()),
+                       unit="n", tone="neutral"),
+                ui.kpi("Reviews Submitted", int(active["reviews_submitted"].sum()),
+                       unit="n", tone="neutral"),
+                ui.kpi("Cancelled", int(active["cancelled"].sum()), unit="n",
+                       tone="red" if active["cancelled"].sum() else "green"),
+                ui.kpi("Undelivered", int(active["undelivered"].sum()), unit="n",
+                       tone="amber" if active["undelivered"].sum() else "green"),
+                ui.kpi("Tenure Review Due", len(due), unit="n",
+                       tone="amber" if len(due) else "green",
+                       sub=f"past {tenure_days} days"),
+            ],
+            config,
+        )
+        if not due.empty:
+            ui.alert_card(
+                f"{len(due)} intern(s) need a tenure review",
+                f"This intern's {tenure_days}-day tenure period is over. Please "
+                "review their performance and take the required action.",
+                meta=", ".join(due["name"].head(8)) + "  ·  see the Interns page",
+                tone="amber",
+            )
 
     # ---- three period blocks -------------------------------------------
     ui.section(
