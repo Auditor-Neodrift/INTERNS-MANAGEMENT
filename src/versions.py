@@ -10,10 +10,24 @@ name the branch for each release, and hand you the exact rollback steps.
 """
 from __future__ import annotations
 
-CURRENT = "2.3"
+CURRENT = "2.4"
 
 # Newest first. Keep the last five; older entries can be trimmed.
 VERSIONS: list[dict] = [
+    {
+        "version": "2.4",
+        "name": "Alert triage + version toggle",
+        "branch": "v2.4",
+        "date": "14 Sep 2026",
+        "changes": [
+            "Alerts tab gained a sub-category toggle and lays its cards out "
+            "three across instead of one long column.",
+            "Urgent alerts now pin to the bottom-right as small dismissible "
+            "notifications on every page except Interns, which already lists them.",
+            "Version toggle is plain text with a chevron, no longer clipped at "
+            "the top of the page.",
+        ],
+    },
     {
         "version": "2.3",
         "name": "Flux dashboard UI",

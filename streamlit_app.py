@@ -29,6 +29,7 @@ import auth  # noqa: E402
 import versions  # noqa: E402
 import data as data_mod  # noqa: E402
 import settings_store  # noqa: E402
+import metrics  # noqa: E402
 import ui  # noqa: E402
 
 ui.inject_css()
@@ -74,42 +75,64 @@ def load_data():
 
 
 def version_bar() -> None:
-    """ChatGPT-style release picker, top-left of the content area.
+    """Release picker: plain text plus a chevron, ChatGPT style.
 
     It cannot hot-swap the running code - one deployment serves one branch -
-    so selecting an older release shows what is in it and how to switch to it.
+    so choosing an older release shows what it contains and how to point the
+    deployment at it.
     """
     options = versions.all_versions(5)
-    labels = [versions.label(v) for v in options]
-    picker, _rest = st.columns([1.35, 2.65])
-    with picker:
-        chosen_label = st.selectbox(
-            "Version", labels, index=0, key="version_pick",
-            label_visibility="collapsed",
-        )
-    chosen = options[labels.index(chosen_label)]
+    running = versions.get(versions.CURRENT) or options[0]
+    viewing = st.session_state.get("version_view", versions.CURRENT)
+    shown = versions.get(viewing) or running
 
-    if chosen["version"] == versions.CURRENT:
+    st.markdown('<div class="flux-verbar"></div>', unsafe_allow_html=True)
+    left, _rest = st.columns([1, 3])
+    with left:
+        suffix = " · Latest" if shown["version"] == versions.CURRENT else ""
+        with st.popover(f"v{shown['version']}{suffix}  ⌄", width="content"):
+            st.markdown('<div class="ver-head">Web app version</div>',
+                        unsafe_allow_html=True)
+            for version in options:
+                is_running = version["version"] == versions.CURRENT
+                # The tick rides in the label so it can never drift out of line
+                # with its row the way a separate column does.
+                tick = "   ✓" if is_running else ""
+                if st.button(
+                    f"v{version['version']} · {version['name']}{tick}",
+                    key=f"ver_{version['version']}", width="stretch",
+                ):
+                    st.session_state["version_view"] = version["version"]
+                    st.rerun()
+                st.markdown(
+                    '<div class="ver-row-sub">'
+                    + (
+                        "Latest - currently running" if is_running
+                        else f"Rollback available on branch {version['branch']}"
+                    )
+                    + "</div>",
+                    unsafe_allow_html=True,
+                )
+
+            if shown["version"] != versions.CURRENT:
+                st.divider()
+                st.markdown(f"**{shown['name']}** · {shown['date']}")
+                for line in shown["changes"]:
+                    st.markdown(f"- {line}")
+                ui.callout(
+                    versions.rollback_steps(shown), "amber",
+                    title=f"Switch the live app to v{shown['version']}",
+                )
+                st.caption(
+                    f"Still running v{versions.CURRENT}. Streamlit serves one "
+                    "branch at a time, so the switch happens in app settings."
+                )
+
+    if shown["version"] != versions.CURRENT:
         st.markdown(
-            f'<div class="flux-ver-note">Running v{versions.CURRENT}, the newest '
-            f'build<span class="flux-ver-pill">Latest</span></div>',
+            f'<div class="flux-ver-note">Viewing notes for v{shown["version"]} · '
+            f'the app is running v{versions.CURRENT}</div>',
             unsafe_allow_html=True,
-        )
-        return
-
-    with st.expander(
-        f"What is in v{chosen['version']}, and how to switch to it", expanded=True
-    ):
-        st.markdown(f"**{chosen['name']}** · released {chosen['date']}")
-        ui.callout(chosen["changes"], "grey", title="What this release contains")
-        ui.callout(
-            versions.rollback_steps(chosen), "amber",
-            title=f"Roll the live app back to v{chosen['version']}",
-        )
-        st.caption(
-            f"You are still running v{versions.CURRENT}. Selecting a release here "
-            "does not change the running app - Streamlit serves one branch at a "
-            "time, so the switch happens in the app settings."
         )
 
 
@@ -150,6 +173,39 @@ def sidebar(bundle) -> None:
 # ---------------------------------------------------------------------------
 # Pages
 # ---------------------------------------------------------------------------
+def notifications(bundle) -> None:
+    """Pin the most urgent intern alerts to the bottom-right of every page."""
+    cfg = get_config().get("display", {})
+    try:
+        interns = metrics.intern_table(
+            bundle.main, bundle.roster,
+            tenure_days=int(cfg.get("tenure_days", 30) or 30),
+            idle_days=int(cfg.get("intern_idle_days", 3) or 3),
+            cancel_pct=float(cfg.get("intern_cancel_alert_pct", 30.0) or 30.0),
+        )
+        alerts = metrics.intern_alerts(
+            interns,
+            int(cfg.get("tenure_days", 30) or 30),
+            int(cfg.get("intern_idle_days", 3) or 3),
+            float(cfg.get("intern_cancel_alert_pct", 30.0) or 30.0),
+        )
+    except Exception:  # never let a notification break the page
+        return
+    if alerts.empty:
+        return
+    reds = alerts[alerts["severity"] == "red"]
+    if reds.empty:
+        return
+    ui.toast_stack(
+        [
+            {"title": f"{row['name']} · {row['label']}",
+             "message": row["message"], "tone": "red"}
+            for _, row in reds.head(3).iterrows()
+        ],
+        total=int(len(reds)),
+    )
+
+
 def _page(module_name: str, func_name: str = "render"):
     def runner():
         bundle = load_data()
@@ -166,6 +222,10 @@ def _page(module_name: str, func_name: str = "render"):
                              f"{bundle.loaded_at:%H:%M}")
         module = __import__(module_name)
         getattr(module, func_name)(bundle, get_config())
+        # The Interns page already lists every alert in full, so the pinned
+        # notifications would only repeat it and cover the controls.
+        if module_name != "page_interns":
+            notifications(bundle)
 
     runner.__name__ = f"page_{module_name}"
     return runner

@@ -52,7 +52,7 @@ CSS = """
   .stApp { background: var(--flux-canvas); }
   .stApp, [data-testid="stMain"] { font-family: var(--font); }
   [data-testid="stMain"] .block-container {
-    padding-top: 1.3rem; padding-bottom: 4rem; max-width: 1520px;
+    padding-top: 2.4rem; padding-bottom: 4rem; max-width: 1520px;
   }
   footer, #MainMenu { visibility: hidden; }
 
@@ -320,6 +320,141 @@ CSS = """
     background: var(--flux-lime); color: var(--flux-lime-ink);
   }
 
+
+  /* ---------- alert grid: three across ---------- */
+  .alert-grid {
+    display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: .7rem; margin: .4rem 0 1rem 0;
+  }
+  .alert-mini {
+    background: var(--flux-card); border: 1px solid var(--flux-line);
+    border-left: 4px solid var(--flux-amber); border-radius: var(--r-sm);
+    padding: .8rem .9rem; min-width: 0; box-shadow: var(--shadow);
+    animation: fluxInSoft .48s var(--ease) both;
+    transition: transform .3s var(--ease), box-shadow .3s var(--ease);
+  }
+  .alert-mini:hover { transform: translateY(-2px); box-shadow: var(--shadow-hi); }
+  .alert-mini.red { border-left-color: var(--flux-red); background: var(--flux-red-bg); border-color: #F6D5CF; }
+  .alert-mini.amber { border-left-color: var(--flux-amber); background: var(--flux-amber-bg); border-color: #F7E2BE; }
+  .alert-mini-name { font-size: .875rem; font-weight: 600; color: var(--flux-ink); margin-bottom: .2rem; }
+  .alert-mini-msg { font-size: .795rem; color: var(--flux-ink-2); line-height: 1.45; }
+  .alert-mini-meta { font-size: .715rem; color: var(--flux-ink-3); margin-top: .32rem; line-height: 1.4; }
+  .alert-grid .alert-mini:nth-child(1) { animation-delay: .00s }
+  .alert-grid .alert-mini:nth-child(2) { animation-delay: .04s }
+  .alert-grid .alert-mini:nth-child(3) { animation-delay: .08s }
+  .alert-grid .alert-mini:nth-child(n+4) { animation-delay: .12s }
+  @media (max-width: 1100px) { .alert-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 700px)  { .alert-grid { grid-template-columns: 1fr; } }
+
+  /* A filtered or transformed ancestor becomes the containing block for
+     position:fixed, which would anchor the toast stack to its wrapper instead
+     of the viewport. Neutralise the reveal on whichever container holds it. */
+  [data-testid="stElementContainer"]:has(.toast-stack),
+  [data-testid="stVerticalBlockBorderWrapper"]:has(.toast-stack),
+  [data-testid="stVerticalBlock"]:has(> [data-testid="stElementContainer"] .toast-stack) {
+    animation: none !important; filter: none !important; transform: none !important;
+  }
+
+  /* ---------- bottom-right notification stack ---------- */
+  .toast-stack {
+    position: fixed; right: 18px; bottom: 18px; z-index: 9990;
+    display: flex; flex-direction: column; gap: .45rem;
+    width: 296px; max-width: calc(100vw - 36px); pointer-events: none;
+  }
+  .toast-stack > * { pointer-events: auto; }
+  .toast-head {
+    align-self: flex-end; font-size: .68rem; font-weight: 600;
+    letter-spacing: .05em; text-transform: uppercase; color: var(--flux-ink-3);
+    background: var(--flux-card); border: 1px solid var(--flux-line);
+    border-radius: 999px; padding: .2rem .6rem; box-shadow: var(--shadow);
+  }
+  .toast-x { display: none; }
+  .toast {
+    display: flex; gap: .55rem; align-items: flex-start;
+    background: var(--flux-card); border: 1px solid var(--flux-line);
+    border-left: 3px solid var(--flux-red); border-radius: var(--r-sm);
+    padding: .6rem .7rem; box-shadow: var(--shadow-hi);
+    animation: toastIn .5s var(--ease) both;
+  }
+  .toast.amber { border-left-color: var(--flux-amber); }
+  .toast-x:checked + .toast { display: none; }
+  .toast-body { flex: 1; min-width: 0; }
+  .toast-title {
+    font-size: .775rem; font-weight: 600; color: var(--flux-ink);
+    line-height: 1.3; margin-bottom: .1rem;
+  }
+  .toast-text {
+    font-size: .715rem; color: var(--flux-ink-2); line-height: 1.4;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .toast-close {
+    cursor: pointer; color: var(--flux-ink-3); font-size: .95rem;
+    line-height: 1; padding: 0 .1rem; flex: 0 0 auto; user-select: none;
+    transition: color .2s var(--ease);
+  }
+  .toast-close:hover { color: var(--flux-ink); }
+  @keyframes toastIn {
+    0%   { opacity: 0; transform: translateX(26px) scale(.96); filter: blur(8px); }
+    100% { opacity: 1; transform: none; filter: blur(0); }
+  }
+  .toast-stack .toast:nth-of-type(1) { animation-delay: .05s }
+  .toast-stack .toast:nth-of-type(2) { animation-delay: .13s }
+  .toast-stack .toast:nth-of-type(3) { animation-delay: .21s }
+  @media (max-width: 640px) {
+    .toast-stack { width: calc(100vw - 24px); right: 12px; bottom: 12px; gap: .35rem; }
+    .toast-text { -webkit-line-clamp: 1; }
+  }
+
+  /* ---------- version toggle: plain text + chevron, no pill ---------- */
+  .flux-verbar { height: .35rem; }
+  [data-testid="stPopoverButton"] {
+    background: transparent !important; border: none !important;
+    box-shadow: none !important; border-radius: 10px !important;
+    padding: .24rem .45rem .24rem .3rem !important;
+    font-size: 1.16rem !important; font-weight: 600 !important;
+    letter-spacing: -.028em; color: var(--flux-ink) !important;
+    transition: background .25s var(--ease), opacity .25s var(--ease);
+    background-color: transparent !important;
+  }
+  [data-testid="stPopoverButton"]:hover {
+    background: rgba(23,23,26,.055) !important; color: var(--flux-ink) !important;
+  }
+  [data-testid="stPopoverButton"]:focus,
+  [data-testid="stPopoverButton"]:active {
+    box-shadow: none !important; border: none !important;
+  }
+  /* The popover panel renders in a portal outside stMain, so primary buttons
+     there miss the stMain rule and fall back to white-on-white. */
+  button[data-testid="stBaseButton-primary"] {
+    background: var(--flux-dark) !important; color: #FFFFFF !important;
+    border: none !important;
+  }
+  [data-baseweb="popover"] button { font-size: .875rem !important; font-weight: 500 !important; }
+  [data-baseweb="popover"] [data-testid="stButton"] button {
+    justify-content: flex-start !important; text-align: left !important;
+  }
+  .ver-row-sub {
+    font-size: .745rem; color: var(--flux-ink-3); line-height: 1.35;
+    margin: -.5rem 0 .35rem .15rem;
+  }
+  .ver-check { font-size: 1.05rem; color: var(--flux-ink); text-align: center; line-height: 1; }
+  .ver-head {
+    font-size: .7rem; font-weight: 600; letter-spacing: .06em;
+    text-transform: uppercase; color: var(--flux-ink-3); margin-bottom: .35rem;
+  }
+
+  /* ---------- segmented sub-nav ---------- */
+  [data-testid="stSegmentedControl"] button {
+    border-radius: 999px !important; font-weight: 500; font-size: .85rem;
+    border-color: var(--flux-line-2) !important;
+  }
+  [data-testid="stSegmentedControl"] button[aria-checked="true"],
+  [data-testid="stSegmentedControl"] button[aria-pressed="true"] {
+    background: var(--flux-dark) !important; color: #FFFFFF !important;
+    border-color: var(--flux-dark) !important;
+  }
+
   /* ---------- centred sign-in ---------- */
   .signin-wrap {
     display: flex; align-items: center; justify-content: center;
@@ -348,7 +483,7 @@ CSS = """
   /* ---------- phones ---------- */
   @media (max-width: 640px) {
     [data-testid="stMain"] .block-container {
-      padding-left: .75rem; padding-right: .75rem; padding-top: .9rem;
+      padding-left: .75rem; padding-right: .75rem; padding-top: 2rem;
     }
     .kpi-grid { grid-template-columns: repeat(auto-fit, minmax(146px, 1fr)); gap: .55rem; }
     .kpi-card { padding: .8rem .85rem; border-radius: 17px; }

@@ -235,6 +235,67 @@ def top_bar(name: str, email: str, right: str = "") -> None:
     )
 
 
+def alert_grid(items: Sequence[dict], columns: int = 3) -> None:
+    """Compact alert cards laid out `columns` across.
+
+    items: {"title", "message", "meta", "tone"} where tone is red or amber.
+    """
+    rows = [i for i in items if i]
+    if not rows:
+        return
+    style = (
+        f' style="grid-template-columns: repeat({int(columns)}, minmax(0, 1fr))"'
+        if columns != 3 else ""
+    )
+    parts = [f'<div class="alert-grid"{style}>']
+    for item in rows:
+        tone = "red" if str(item.get("tone", "amber")).lower() == "red" else "amber"
+        meta = item.get("meta") or ""
+        meta_html = (
+            f'<div class="alert-mini-meta">{html.escape(str(meta))}</div>' if meta else ""
+        )
+        parts.append(
+            f'<div class="alert-mini {tone}">'
+            f'<div class="alert-mini-name">{html.escape(str(item.get("title", "")))}</div>'
+            f'<div class="alert-mini-msg">{html.escape(str(item.get("message", "")))}</div>'
+            f"{meta_html}</div>"
+        )
+    parts.append("</div>")
+    st.markdown("".join(parts), unsafe_allow_html=True)
+
+
+def toast_stack(items: Sequence[dict], limit: int = 3, total: int | None = None) -> None:
+    """Small dismissible notifications pinned to the bottom-right.
+
+    Dismissal is a pure CSS checkbox toggle, so closing one does not trigger a
+    Streamlit rerun and lose the page you were reading.
+    """
+    rows = [i for i in items if i][:limit]
+    if not rows:
+        return
+    count = total if total is not None else len(items)
+    label = f"{count} to action" if count != 1 else "1 to action"
+    parts = [f'<div class="toast-stack"><div class="toast-head">{html.escape(label)}</div>']
+    for idx, item in enumerate(rows):
+        tone = "amber" if str(item.get("tone", "red")).lower() == "amber" else ""
+        key = f"ntf-{idx}-{abs(hash(str(item.get('title', '')))) % 100000}"
+        parts.append(
+            f'<input type="checkbox" id="{key}" class="toast-x">'
+            f'<div class="toast {tone}"><div class="toast-body">'
+            f'<div class="toast-title">{html.escape(str(item.get("title", "")))}</div>'
+            f'<div class="toast-text">{html.escape(str(item.get("message", "")))}</div>'
+            f'</div><label for="{key}" class="toast-close" title="Dismiss">&times;</label>'
+            f"</div>"
+        )
+    if count > len(rows):
+        extra = count - len(rows)
+        parts.append(
+            f'<div class="toast-head">+{extra} more on the Interns page</div>'
+        )
+    parts.append("</div>")
+    st.markdown("".join(parts), unsafe_allow_html=True)
+
+
 def hero(title: str, subtitle: str) -> None:
     """Gradient-tinted intro panel used at the top of each area."""
     st.markdown(

@@ -154,20 +154,18 @@ def render(bundle, config: dict) -> None:
             ],
             config,
         )
-        counts = intern_alerts["kind"].value_counts() if not intern_alerts.empty else {}
-        for kind, title in (
-            ("clerical", "clerical error"),
-            ("idle", "active with no orders"),
-            ("cancellation", "cancellation rate above the ceiling"),
-        ):
-            hits = intern_alerts[intern_alerts["kind"] == kind] if len(counts) else []
-            if len(hits):
-                ui.alert_card(
-                    f"{len(hits)} {title}" + ("s" if len(hits) > 1 and kind != "idle" else ""),
-                    str(hits.iloc[0]["message"]),
-                    meta=", ".join(hits["name"].head(8)) + "  ·  see the Interns page",
-                    tone="red",
-                )
+        if not reds.empty:
+            ui.alert_grid(
+                [
+                    {"title": f"{row['name']} · {row['label']}",
+                     "message": row["message"], "meta": row["detail"],
+                     "tone": row["severity"]}
+                    for _, row in reds.head(3).iterrows()
+                ],
+                columns=3,
+            )
+            if len(reds) > 3:
+                ui.note(f"{len(reds) - 3} more red alerts on the Interns page.")
         if not due.empty:
             ui.alert_card(
                 f"{len(due)} intern(s) need a tenure review",

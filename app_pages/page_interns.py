@@ -86,7 +86,8 @@ def render(bundle, config: dict) -> None:
 # Banner
 # ---------------------------------------------------------------------------
 def _alert_summary(alerts: pd.DataFrame) -> None:
-    """One chip row plus a card per red alert, worst kind first."""
+    """Category chips only - the urgent detail lives in the bottom-right
+    notifications and the Alerts tab, so the top of the page stays readable."""
     counts = alerts["kind"].value_counts()
     ui.chips([
         (f"{int(counts.get('clerical', 0))} clerical errors",
@@ -98,12 +99,6 @@ def _alert_summary(alerts: pd.DataFrame) -> None:
         (f"{int(counts.get('tenure', 0))} tenure reviews due",
          "amber" if counts.get("tenure") else "green"),
     ])
-    reds = alerts[alerts["severity"] == "red"]
-    for _, row in reds.head(4).iterrows():
-        ui.alert_card(f"{row['name']} - {row['label']}", row["message"],
-                      meta=row["detail"], tone="red")
-    if len(reds) > 4:
-        ui.note(f"{len(reds) - 4} more red alerts on the Alerts tab.")
 
 
 # ---------------------------------------------------------------------------
@@ -347,6 +342,19 @@ def _daily_tab(main: pd.DataFrame, active: pd.DataFrame, config: dict) -> None:
 # ---------------------------------------------------------------------------
 # Tenure alerts
 # ---------------------------------------------------------------------------
+ALERT_GROUPS = [
+    ("clerical", "Clerical errors",
+     "The roster contradicts itself. Fix these in the sheet first - every other "
+     "intern number is derived from these dates."),
+    ("idle", "Not ordering",
+     "Active for longer than the grace period with no orders placed."),
+    ("cancellation", "High cancellation",
+     "Cancelled plus undelivered above the configured share of their orders."),
+    ("tenure", "Tenure review due",
+     "Past the tenure window and still marked Active."),
+]
+
+
 def _alerts_tab(alerts: pd.DataFrame, tenure_days: int, idle_days: int,
                 cancel_pct: float) -> None:
     if alerts.empty:
@@ -363,26 +371,35 @@ def _alerts_tab(alerts: pd.DataFrame, tenure_days: int, idle_days: int,
         "All three are editable on the Settings page."
     )
 
-    groups = [
-        ("clerical", "Clerical errors",
-         "The roster contradicts itself. Fix these in the sheet first - every "
-         "other intern number is derived from these dates."),
-        ("idle", "Active but not ordering",
-         f"On the roster as Active for more than {idle_days} days with no orders."),
-        ("cancellation", "Cancellation rate too high",
-         f"Cancelled plus undelivered above {cancel_pct:g}% of their orders."),
-        ("tenure", "Tenure review due",
-         f"Past the {tenure_days}-day mark and still Active."),
-    ]
-    for kind, title, blurb in groups:
-        sub = alerts[alerts["kind"] == kind]
+    counts = alerts["kind"].value_counts()
+    labels = {"all": f"All ({len(alerts)})"}
+    for kind, title, _ in ALERT_GROUPS:
+        labels[kind] = f"{title} ({int(counts.get(kind, 0))})"
+
+    keys = ["all"] + [k for k, _, _ in ALERT_GROUPS]
+    picked = st.segmented_control(
+        "Alert type", keys, format_func=lambda k: labels[k],
+        default="all", key="alert_kind", label_visibility="collapsed",
+    ) or "all"
+
+    if picked == "all":
+        for kind, title, blurb in ALERT_GROUPS:
+            sub = alerts[alerts["kind"] == kind]
+            if sub.empty:
+                continue
+            ui.section(f"{title} ({len(sub)})", blurb)
+            _render_alert_cards(sub)
+        empty = [t for k, t, _ in ALERT_GROUPS if int(counts.get(k, 0)) == 0]
+        if empty:
+            ui.callout([f"Clear: {', '.join(empty)}."], "green")
+    else:
+        title, blurb = next((t, b) for k, t, b in ALERT_GROUPS if k == picked)
+        sub = alerts[alerts["kind"] == picked]
         ui.section(f"{title} ({len(sub)})", blurb)
         if sub.empty:
-            ui.callout(["None."], "green")
-            continue
-        for _, row in sub.iterrows():
-            ui.alert_card(row["name"], row["message"], meta=row["detail"],
-                          tone=row["severity"])
+            ui.callout([f"No {title.lower()} right now."], "green")
+        else:
+            _render_alert_cards(sub)
 
     table = alerts.rename(columns={
         "name": "Intern", "label": "Alert", "severity": "Severity",
@@ -392,10 +409,21 @@ def _alerts_tab(alerts: pd.DataFrame, tenure_days: int, idle_days: int,
         "not_delivered_rate": "Not delivered %",
     })[["Intern", "Alert", "Severity", "What is wrong", "Context", "Status",
         "Orders", "Cancelled", "Undelivered", "Reviews", "Not delivered %"]]
-    ui.section("All alerts")
-    ui.show_table(table, height=420)
-    ui.download_row({"intern alerts": table}, excel_name="intern-alerts",
-                    key_prefix="alerts")
+    with st.expander(f"All {len(alerts)} alerts as a table"):
+        ui.show_table(table, height=400)
+        ui.download_row({"intern alerts": table}, excel_name="intern-alerts",
+                        key_prefix="alerts")
+
+
+def _render_alert_cards(sub: pd.DataFrame) -> None:
+    ui.alert_grid(
+        [
+            {"title": row["name"], "message": row["message"],
+             "meta": row["detail"], "tone": row["severity"]}
+            for _, row in sub.iterrows()
+        ],
+        columns=3,
+    )
 
 
 # ---------------------------------------------------------------------------

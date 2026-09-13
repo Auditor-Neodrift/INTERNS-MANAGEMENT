@@ -225,7 +225,8 @@ a settings change rather than a git operation.
 
 | Version | Branch | What it is |
 |---|---|---|
-| **2.3** | `v2.3` | Flux dashboard UI, version picker *(latest, also on `main`)* |
+| **2.4** | `v2.4` | Alert triage, pinned notifications, text version toggle *(latest, also on `main`)* |
+| 2.3 | `v2.3` | Flux dashboard UI, version picker |
 | 2.2 | `v2.2` | Intern alerts, real End date, iOS glass |
 | 2.1 | `v2.1` | Interns area, influencer sourcing, six tabbed areas |
 
@@ -245,7 +246,7 @@ Because the old branch is untouched, you can also run both at once: deploy a
 second app from `v2.2` and compare them side by side while fixing `main`.
 
 To cut the next release, add an entry at the top of `VERSIONS` in
-`src/versions.py`, bump `CURRENT`, then `git branch v2.4 && git push -u origin v2.4`.
+`src/versions.py`, bump `CURRENT`, then `git branch v2.5 && git push -u origin v2.5`.
 
 ## Access control
 
