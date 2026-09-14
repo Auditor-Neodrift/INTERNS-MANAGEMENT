@@ -220,52 +220,52 @@ explains what is needed instead of failing.
 
 ## Visual style
 
-The interface follows the glassmorphism rules from
-[uxpilot.ai/blogs/glassmorphism-ui](https://uxpilot.ai/blogs/glassmorphism-ui).
+Four themes, switchable from the control pinned to the top-right of every page:
 
-| Rule | How it is applied |
+| Theme | What it is |
 |---|---|
-| Blur 10-30px | 18px on primary panels, 12px on dense ones, 12/9px on phones |
-| Semi-transparent tint | 0.68 white on panels, 0.90 on tables and forms |
-| Subtle low-contrast borders | 1px white at 0.62, plus an inset rim light |
-| Rounded, pill-like geometry | 20/28px cards, fully rounded controls |
-| One light direction | Rim light on every top edge; all shadows fall the same way |
-| Vibrant backdrop | A photograph (`static/bg.jpg`), fixed, behind a scrim that tames its highlights |
-| Apply selectively | Glass on sidebar, cards, alerts, tabs, toasts — **not** on tables, forms or body copy |
-| Don't animate blur on blurred elements | Glass panels reveal with opacity and lift; the motion-blur entrance is kept for plain content |
-| Non-blur fallback | `@supports` swaps to an opaque panel; `translateZ(0)` composites on the GPU |
+| **Dark · Glass** | Crystal panels over a photographic backdrop *(default)* |
+| **Light · Glass** | The same, inverted |
+| **Dark** | Solid surfaces, no blur, no image |
+| **Light** | Solid surfaces, no blur, no image |
 
-**The backdrop is a photograph, and it decided the theme.** The supplied image
-is effectively black — mean RGB (4,4,4), median luminance 0.00 — with sparse
-bright highlights on the bubbles. Light panels over it would grey the photo out
-and hide the only part worth seeing, so the app runs the article's *dark-mode*
-guidance instead: dark tints, light text, gentler shadows, and a cool rim rather
-than pure white.
+The glass themes follow [uxpilot.ai/blogs/glassmorphism-ui](https://uxpilot.ai/blogs/glassmorphism-ui):
+26px blur, low-opacity panels, thin bright borders, one light direction, a rim
+highlight on the lit edge, `@supports` fallback and `translateZ(0)` compositing.
+Glass covers the sidebar, cards, tabs, chips, alerts, toasts and tables; body
+copy sits on no glass at all.
 
-**Contrast was solved, not eyeballed.** A scrim at `rgba(7,10,18,.55)` pulls the
-bubble highlights from 240 down to ~112 so no panel straddles a hard
-light-to-dark jump. Panels are `#0E1320` at .72, which resolves to `#292D38`
-over the brightest highlight and `#0B0F1A` over black. Measured on the worst
-case: ink 12.4:1, ink-2 8.7:1, ink-3 5.4:1, green 7.9:1, amber 8.2:1, red 5.1:1,
-blue 5.8:1 — all clearing WCAG AA 4.5:1 for small text.
+### Backgrounds
 
-**Depth comes from the edge, not the fill.** A dark panel on a black photo
-differs from its canvas by only ~1.06:1 in fill, and no realistic opacity fixes
-that — so separation is carried by the 1px border and rim light, which is what
-the article prescribes for dark mode.
+Settings → *Display & data* sets an image per mode, by path, URL or upload.
+Uploads land in `static/`, which survives a local restart but is wiped when
+Streamlit Cloud redeploys — for a permanent background, commit the file or use
+a URL.
 
-The image is resized to 1920px and pre-blurred at build time (the article notes
-this cuts the runtime cost of the CSS filter) and served from `static/` via
-`enableStaticServing`, so the browser caches it instead of re-sending it on
-every rerun.
+**Any image is safe.** A scrim sits between the backdrop and the panels, which
+bounds how bright or dark the backdrop can get, so panel colour — and therefore
+text contrast — stays inside a tested range. The worst cases were measured:
+
+| Theme | Worst backdrop | Panel | Weakest token |
+|---|---|---|---|
+| Dark · Glass | `#4C4E54` (scrim .72 over white) | `#2D303A` | ink-3 5.2:1 |
+| Light · Glass | `#BDBDBD` (scrim .74 over black) | `#DBDBDB` | ink-3 4.5:1 |
+
+Both clear WCAG AA 4.5:1 for small text, so a user-supplied image cannot make
+the interface unreadable.
+
+> **Known limit.** Data tables are drawn on a canvas by Streamlit using the base
+> theme in `.streamlit/config.toml`, which cannot change at runtime and cannot
+> be reached by CSS. It is set to dark, so tables look correct under both dark
+> themes and stay dark under the light ones. Flip `base` to `light` if you would
+> rather have that trade the other way.
 
 ### Charts
 
-Charts keep ggplot's grammar, translated onto dark glass: a faint panel behind
-the data (`rgba(255,255,255,0.05)`), light gridlines on the y-axis only, and no
-spines, ticks or zero-lines — so the grid reads as texture rather than
-furniture. The categorical palette uses light tints of the article's
-recommended families (blues, violets, teals, magenta).
+Charts keep ggplot's grammar and follow the active theme: a faint panel behind
+the data, gridlines on the y-axis only, and no spines, ticks or zero-lines — so
+the grid reads as texture rather than furniture. Each mode has its own
+categorical palette drawn from the article's recommended families.
 
 ## Versions and rolling back
 

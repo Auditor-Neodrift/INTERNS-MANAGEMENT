@@ -30,9 +30,9 @@ import versions  # noqa: E402
 import data as data_mod  # noqa: E402
 import settings_store  # noqa: E402
 import metrics  # noqa: E402
+import theme as theme_mod  # noqa: E402
 import ui  # noqa: E402
 
-ui.inject_css()
 
 # ---------------------------------------------------------------------------
 # Nothing below this line runs until an allow-listed Google account signs in.
@@ -44,6 +44,8 @@ auth.require_login()
 # ---------------------------------------------------------------------------
 if "config" not in st.session_state:
     st.session_state["config"] = settings_store.load_config()
+
+ui.inject_css(st.session_state["config"])
 
 
 def get_config() -> dict:
@@ -72,6 +74,28 @@ def load_data():
             st.cache_data.clear()
             st.rerun()
         st.stop()
+
+
+def theme_switch() -> None:
+    """Theme picker, pinned to the top-right corner of every page.
+
+    Rendered inside a container the CSS fixes to the viewport, so it stays put
+    while the page scrolls. The container is exempted from the reveal
+    animation and backdrop-filter, either of which would otherwise become the
+    containing block and drop it back into the flow.
+    """
+    display = get_config().setdefault("display", {})
+    current = display.get("theme", theme_mod.DEFAULT_THEME)
+    dock = st.container(key="theme_dock")
+    with dock:
+        chosen = st.segmented_control(
+            "Theme", theme_mod.THEME_ORDER,
+            format_func=lambda k: theme_mod.THEME_LABELS[k],
+            default=current, key="theme_pick", label_visibility="collapsed",
+        )
+    if chosen and chosen != current:
+        display["theme"] = chosen
+        st.rerun()
 
 
 def version_bar() -> None:
@@ -195,6 +219,7 @@ def _page(module_name: str, func_name: str = "render"):
     def runner():
         bundle = load_data()
         sidebar(bundle)
+        theme_switch()
         version_bar()
         try:
             email = str(getattr(st.user, "email", "") or "")

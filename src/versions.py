@@ -10,10 +10,24 @@ name the branch for each release, and hand you the exact rollback steps.
 """
 from __future__ import annotations
 
-CURRENT = "2.7"
+CURRENT = "2.8"
 
 # Newest first. Keep the last five; older entries can be trimmed.
 VERSIONS: list[dict] = [
+    {
+        "version": "2.8",
+        "name": "Four themes, crystal glass",
+        "branch": "v2.8",
+        "date": "15 Sep 2026",
+        "changes": [
+            "Theme switch pinned to the top-right of every page: Dark Glass, "
+            "Light Glass, Dark and Light.",
+            "Glass is now crystal - roughly half opacity at 26px blur - and "
+            "covers the sidebar and tables as well as the cards.",
+            "Settings can set a background image per mode, by path, URL or "
+            "upload.",
+        ],
+    },
     {
         "version": "2.7",
         "name": "Photo backdrop, dark glass",

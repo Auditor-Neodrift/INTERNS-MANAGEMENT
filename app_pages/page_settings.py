@@ -7,12 +7,14 @@ restarts, so the download/commit route is the way to make settings permanent.
 from __future__ import annotations
 
 import json
+import pathlib
 
 import pandas as pd
 import streamlit as st
 
 import audit
 import data as data_mod
+import theme as theme_mod
 import settings_store
 import ui
 from settings_store import grade
@@ -28,7 +30,7 @@ MODE_KEYS = {v: k for k, v in MODE_LABELS.items()}
 # too, or a still-mounted widget would write its old value straight back.
 WIDGET_PREFIXES = (
     "mode_", "min_", "max_", "slack_", "green_", "amber_",
-    "on_", "sev_", "param_", "c_", "d_",
+    "on_", "sev_", "param_", "c_", "d_", "set_", "bg_up_",
 )
 
 
@@ -301,6 +303,54 @@ def _rule_editor(key: str, spec: dict, hits: int) -> None:
 def _display_tab(config: dict) -> None:
     display = config["display"]
 
+    ui.section(
+        "Theme and background",
+        "The same switch sits in the top-right corner of every page. Glass "
+        "themes blur whatever is behind them; the flat themes are solid.",
+    )
+    current = display.get("theme", theme_mod.DEFAULT_THEME)
+    picked = st.segmented_control(
+        "Theme", theme_mod.THEME_ORDER,
+        format_func=lambda k: theme_mod.THEME_LABELS[k],
+        default=current, key="set_theme",
+    )
+    if picked:
+        display["theme"] = picked
+
+    col_dark, col_light = st.columns(2)
+    with col_dark:
+        display["bg_dark"] = st.text_input(
+            "Dark theme background", key="set_bg_dark",
+            value=display.get("bg_dark", theme_mod.DEFAULT_DARK_BG),
+            placeholder="app/static/bg.jpg or https://...",
+            help="Used by Dark - Glass. Leave empty for a plain gradient.",
+        )
+        _bg_upload("dark", display)
+    with col_light:
+        display["bg_light"] = st.text_input(
+            "Light theme background", key="set_bg_light",
+            value=display.get("bg_light", theme_mod.DEFAULT_LIGHT_BG),
+            placeholder="app/static/bg-light.jpg or https://...",
+            help="Used by Light - Glass. Leave empty for a plain gradient.",
+        )
+        _bg_upload("light", display)
+
+    ui.callout(
+        [
+            "Whatever image you set, a scrim sits between it and the panels, so "
+            "text contrast stays inside a tested range - a very bright or very "
+            "dark photo cannot make the interface unreadable.",
+            "Uploads are written to <code>static/</code>. That folder survives a "
+            "local restart but is wiped when Streamlit Cloud redeploys, so for a "
+            "permanent background commit the file to the repo or paste a URL.",
+            "<strong>Known limit:</strong> data tables are drawn on a canvas by "
+            "Streamlit using the base theme in <code>config.toml</code>, which "
+            "cannot change at runtime. It is set to dark, so tables look right "
+            "in both dark themes and stay dark under the light ones.",
+        ],
+        "grey",
+    )
+
     ui.section("Colours")
     col_a, col_b, col_c, col_d = st.columns(4)
     display["green_hex"] = col_a.color_picker(
@@ -368,6 +418,29 @@ def _display_tab(config: dict) -> None:
     if st.button("Clear the cache and re-read now", icon=":material/refresh:"):
         st.cache_data.clear()
         st.rerun()
+
+
+def _bg_upload(mode: str, display: dict) -> None:
+    """Optional upload that lands in static/ and fills in the path field."""
+    upload = st.file_uploader(
+        f"…or upload a {mode} image", type=["jpg", "jpeg", "png", "webp"],
+        key=f"bg_up_{mode}", label_visibility="collapsed",
+    )
+    if upload is None:
+        return
+    static = pathlib.Path(__file__).resolve().parent.parent / "static"
+    static.mkdir(exist_ok=True)
+    suffix = pathlib.Path(upload.name).suffix.lower() or ".jpg"
+    target = static / f"bg-{mode}{suffix}"
+    try:
+        target.write_bytes(upload.getvalue())
+    except OSError as exc:
+        st.error(f"Could not save the image: {exc}")
+        return
+    display[f"bg_{mode}"] = f"app/static/{target.name}"
+    st.session_state[f"set_bg_{mode}"] = display[f"bg_{mode}"]
+    st.success(f"Saved as {target.name}.", icon=":material/check:")
+    st.rerun()
 
 
 # ---------------------------------------------------------------------------

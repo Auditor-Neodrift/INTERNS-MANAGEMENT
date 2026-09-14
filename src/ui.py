@@ -17,18 +17,43 @@ import plotly.graph_objects as go
 import streamlit as st
 
 from settings_store import grade
-from theme import CSS as BASE_CSS
+import theme as theme_mod
 
 SEVERITY_ORDER = {"red": 0, "amber": 1, "ok": 2, "neutral": 3}
 
-CHART_COLORWAY = [
-    "#7DA8FF", "#A99BFF", "#5BD6DE", "#F58BC2", "#4ADE80",
-    "#FBBF24", "#93B8FF", "#C4B5FD", "#7DD3FC", "#FB7185",
+CHART_COLORWAY_DARK = [
+    "#8FB6FF", "#B3A6FF", "#6FE0E8", "#F79BCC", "#5CE68F",
+    "#FCC63A", "#A9C7FF", "#CDBFFF", "#8FE9F0", "#FF8797",
 ]
+CHART_COLORWAY_LIGHT = [
+    "#1D4FD8", "#5B3FD0", "#0D7A84", "#B03579", "#0F6B47",
+    "#8A4F07", "#3E6FE0", "#7A5FD8", "#2A8F98", "#A8283E",
+]
+CHART_COLORWAY = CHART_COLORWAY_DARK
 
 
-def inject_css() -> None:
-    st.markdown(BASE_CSS, unsafe_allow_html=True)
+_ACTIVE_CONFIG: dict = {}
+
+
+def current_theme(config: dict | None = None) -> str:
+    """The live theme. Falls back to whatever inject_css last rendered, so
+    charts pick it up without every call site passing the config down."""
+    display = (config or _ACTIVE_CONFIG).get("display", {})
+    return display.get("theme", theme_mod.DEFAULT_THEME)
+
+
+def inject_css(config: dict | None = None) -> None:
+    global _ACTIVE_CONFIG
+    _ACTIVE_CONFIG = config or {}
+    display = (config or {}).get("display", {})
+    st.markdown(
+        theme_mod.css(
+            display.get("theme", theme_mod.DEFAULT_THEME),
+            display.get("bg_dark", theme_mod.DEFAULT_DARK_BG),
+            display.get("bg_light", theme_mod.DEFAULT_LIGHT_BG),
+        ),
+        unsafe_allow_html=True,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -337,7 +362,8 @@ def section(title: str, description: str | None = None) -> None:
 # ---------------------------------------------------------------------------
 # Charts
 # ---------------------------------------------------------------------------
-def style_chart(fig: go.Figure, height: int = 320, legend: bool = True) -> go.Figure:
+def style_chart(fig: go.Figure, height: int = 320, legend: bool = True,
+                config: dict | None = None) -> go.Figure:
     """ggplot's chart grammar, translated onto glass.
 
     ggplot2 puts a tinted panel behind the data with white gridlines and no
@@ -347,29 +373,38 @@ def style_chart(fig: go.Figure, height: int = 320, legend: bool = True) -> go.Fi
     through glass. Ticks and spines stay off; the plot area is transparent to
     the card behind it.
     """
+    dark = theme_mod.is_dark(current_theme(config))
+    ink = "#F2F4F8" if dark else "#12172A"
+    ink2 = "#C9D1E0" if dark else "#3A4258"
+    ink3 = "#A3ACC2" if dark else "#57607A"
+    panel = "rgba(255,255,255,0.05)" if dark else "rgba(255,255,255,0.34)"
+    grid = "rgba(255,255,255,0.13)" if dark else "rgba(255,255,255,0.9)"
+    hover_bg = "rgba(14,19,32,0.96)" if dark else "rgba(255,255,255,0.96)"
+    colorway = CHART_COLORWAY_DARK if dark else CHART_COLORWAY_LIGHT
+
     has_title = bool(getattr(fig.layout.title, "text", None))
     top_margin = 62 if (has_title and legend) else (40 if has_title else 26)
 
     fig.update_layout(
         height=height,
         margin=dict(l=8, r=8, t=top_margin, b=8),
-        colorway=CHART_COLORWAY,
+        colorway=colorway,
         # ggplot's panel: a light wash the data sits on, not a hard surface
-        plot_bgcolor="rgba(255,255,255,0.05)",
+        plot_bgcolor=panel,
         paper_bgcolor="rgba(0,0,0,0)",
-        font=dict(size=12, color="#C7CEDC",
+        font=dict(size=12, color=ink2,
                   family="Inter, -apple-system, Segoe UI, sans-serif"),
         showlegend=legend,
         legend=dict(
             orientation="h", yanchor="bottom", y=1.0,
             xanchor="left", x=0, title_text="",
-            bgcolor="rgba(0,0,0,0)", font=dict(size=11.5, color="#C7CEDC"),
+            bgcolor="rgba(0,0,0,0)", font=dict(size=11.5, color=ink2),
         ),
         hovermode="x unified",
         hoverlabel=dict(
-            bgcolor="rgba(14,19,32,0.96)",
-            bordercolor="rgba(255,255,255,0.18)",
-            font=dict(color="#F2F4F8", size=12),
+            bgcolor=hover_bg,
+            bordercolor="rgba(140,155,190,0.3)",
+            font=dict(color=ink, size=12),
         ),
         dragmode=False,
         barcornerradius=6,
@@ -377,26 +412,27 @@ def style_chart(fig: go.Figure, height: int = 320, legend: bool = True) -> go.Fi
     if has_title:
         fig.update_layout(
             title=dict(x=0, xanchor="left", y=1, yanchor="top",
-                       font=dict(size=13.5, color="#F2F4F8"),
+                       font=dict(size=13.5, color=ink),
                        pad=dict(t=2, b=10))
         )
     # White gridlines, no spines, no ticks - straight from ggplot
     axis = dict(
         showline=False, zeroline=False, ticks="",
         linecolor="rgba(0,0,0,0)",
-        tickfont=dict(size=11.5, color="#9AA3B8"),
-        title_font=dict(size=12, color="#C7CEDC"),
+        tickfont=dict(size=11.5, color=ink3),
+        title_font=dict(size=12, color=ink2),
     )
     fig.update_xaxes(showgrid=False, **axis)
     fig.update_yaxes(
-        showgrid=True, gridcolor="rgba(255,255,255,0.12)", gridwidth=1.2, **axis
+        showgrid=True, gridcolor=grid, gridwidth=1.2, **axis
     )
     return fig
 
 
-def show_chart(fig: go.Figure, height: int = 320, legend: bool = True) -> None:
+def show_chart(fig: go.Figure, height: int = 320, legend: bool = True,
+               config: dict | None = None) -> None:
     st.plotly_chart(
-        style_chart(fig, height, legend),
+        style_chart(fig, height, legend, config),
         width="stretch",
         config={"displayModeBar": False, "scrollZoom": False, "responsive": True},
     )

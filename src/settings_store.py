@@ -225,6 +225,9 @@ DEFAULT_DISPLAY: dict[str, Any] = {
     "tenure_days": 30,
     "intern_idle_days": 3,
     "intern_cancel_alert_pct": 30.0,
+    "theme": "dark_glass",
+    "bg_dark": "app/static/bg.jpg",
+    "bg_light": "",
 }
 
 DEFAULTS: dict[str, Any] = {
