@@ -113,12 +113,12 @@ def render(bundle, config: dict) -> None:
         labels = series["month_label"]
         fig = go.Figure()
         fig.add_bar(x=labels, y=series["order_value"], name="Order value funded",
-                    marker_color="#1B1B1E")
+                    marker_color="#2F6BFF")
         fig.add_bar(x=labels, y=series["paid_unreflected_amt"],
-                    name="Paid but not reflected", marker_color="#E0503C")
+                    name="Paid but not reflected", marker_color="#BD2D46")
         fig.add_scatter(x=labels, y=series["payment_pending_amt"],
                         name="Payment pending", mode="lines+markers",
-                        line=dict(color="#E08A17", width=2))
+                        line=dict(color="#965708", width=2))
         fig.update_layout(barmode="group", yaxis_title=symbol)
         ui.show_chart(fig, height=330)
 

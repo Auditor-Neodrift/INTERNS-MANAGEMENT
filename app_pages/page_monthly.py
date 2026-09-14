@@ -149,7 +149,7 @@ def render(bundle, config: dict, embedded: bool = False) -> None:
             fig = go.Figure(go.Bar(
                 x=prod["total_orders"].head(15),
                 y=prod["product"].head(15),
-                orientation="h", marker_color="#1B1B1E",
+                orientation="h", marker_color="#2F6BFF",
                 text=prod["total_orders"].head(15), textposition="auto",
             ))
             fig.update_yaxes(autorange="reversed")

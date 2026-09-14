@@ -22,8 +22,8 @@ from theme import CSS as BASE_CSS
 SEVERITY_ORDER = {"red": 0, "amber": 1, "ok": 2, "neutral": 3}
 
 CHART_COLORWAY = [
-    "#1B1B1E", "#B9A7F5", "#C2DB33", "#2E9E5B", "#E08A17",
-    "#E0503C", "#7C6BD1", "#D9F154", "#93939E", "#E6E0FB",
+    "#2F6BFF", "#7C5CFF", "#14B8C4", "#E0479E", "#10754F",
+    "#965708", "#5A8DEE", "#9B7BFF", "#3FC9D4", "#BD2D46",
 ]
 
 
@@ -123,10 +123,10 @@ def _band_text(spec: dict) -> str:
 
 def _colour(severity: str, display: dict) -> str:
     return {
-        "red": display.get("red_hex", "#E0503C"),
-        "amber": display.get("amber_hex", "#E08A17"),
-        "green": display.get("green_hex", "#2E9E5B"),
-    }.get(severity, display.get("neutral_hex", "#93939E"))
+        "red": display.get("red_hex", "#BD2D46"),
+        "amber": display.get("amber_hex", "#965708"),
+        "green": display.get("green_hex", "#10754F"),
+    }.get(severity, display.get("neutral_hex", "#5F6780"))
 
 
 ICONS = {
@@ -338,34 +338,59 @@ def section(title: str, description: str | None = None) -> None:
 # Charts
 # ---------------------------------------------------------------------------
 def style_chart(fig: go.Figure, height: int = 320, legend: bool = True) -> go.Figure:
-    """A title and a top legend would overlap, so reserve room for both."""
+    """ggplot's chart grammar, translated onto glass.
+
+    ggplot2 puts a tinted panel behind the data with white gridlines and no
+    axis spines, so the grid reads as texture rather than furniture. That
+    survives the translation intact - the panel just becomes a translucent
+    wash instead of grey90, and the gridlines stay white so they read as light
+    through glass. Ticks and spines stay off; the plot area is transparent to
+    the card behind it.
+    """
     has_title = bool(getattr(fig.layout.title, "text", None))
-    top_margin = 62 if (has_title and legend) else (40 if has_title else 28)
+    top_margin = 62 if (has_title and legend) else (40 if has_title else 26)
 
     fig.update_layout(
         height=height,
         margin=dict(l=8, r=8, t=top_margin, b=8),
         colorway=CHART_COLORWAY,
-        plot_bgcolor="rgba(0,0,0,0)",
+        # ggplot's panel: a light wash the data sits on, not a hard surface
+        plot_bgcolor="rgba(255,255,255,0.34)",
         paper_bgcolor="rgba(0,0,0,0)",
-        font=dict(size=12, color="#17171A", family="Inter, -apple-system, Segoe UI, sans-serif"),
+        font=dict(size=12, color="#414862",
+                  family="Inter, -apple-system, Segoe UI, sans-serif"),
         showlegend=legend,
         legend=dict(
             orientation="h", yanchor="bottom", y=1.0,
             xanchor="left", x=0, title_text="",
+            bgcolor="rgba(0,0,0,0)", font=dict(size=11.5, color="#414862"),
         ),
         hovermode="x unified",
+        hoverlabel=dict(
+            bgcolor="rgba(255,255,255,0.94)",
+            bordercolor="rgba(140,155,190,0.3)",
+            font=dict(color="#14182B", size=12),
+        ),
         dragmode=False,
+        barcornerradius=6,
     )
     if has_title:
         fig.update_layout(
-            title=dict(
-                x=0, xanchor="left", y=1, yanchor="top",
-                font=dict(size=13.5), pad=dict(t=2, b=10),
-            )
+            title=dict(x=0, xanchor="left", y=1, yanchor="top",
+                       font=dict(size=13.5, color="#14182B"),
+                       pad=dict(t=2, b=10))
         )
-    fig.update_xaxes(showgrid=False, linecolor="#E3E3DD")
-    fig.update_yaxes(gridcolor="#EFEFEA", zerolinecolor="#E3E3DD")
+    # White gridlines, no spines, no ticks - straight from ggplot
+    axis = dict(
+        showline=False, zeroline=False, ticks="",
+        linecolor="rgba(0,0,0,0)",
+        tickfont=dict(size=11.5, color="#5F6780"),
+        title_font=dict(size=12, color="#414862"),
+    )
+    fig.update_xaxes(showgrid=False, **axis)
+    fig.update_yaxes(
+        showgrid=True, gridcolor="rgba(255,255,255,0.85)", gridwidth=1.4, **axis
+    )
     return fig
 
 
@@ -388,7 +413,7 @@ def threshold_bands(
     if not spec:
         return fig
     mode = spec.get("mode")
-    green_hex = display.get("green_hex", "#2E9E5B")
+    green_hex = display.get("green_hex", "#10754F")
 
     marks = [
         float(spec[k]) for k in ("green", "amber", "min", "max")
@@ -405,7 +430,7 @@ def threshold_bands(
     axis_low = 0.0 if low >= 0 else low - pad
     axis_high = high + pad
 
-    kwargs = dict(fillcolor=green_hex, opacity=0.07, line_width=0, layer="below")
+    kwargs = dict(fillcolor=green_hex, opacity=0.09, line_width=0, layer="below")
     if mode == "higher_better":
         fig.add_hrect(y0=float(spec["green"]), y1=axis_high, **kwargs)
     elif mode == "lower_better":
@@ -421,7 +446,7 @@ def threshold_bands(
 # ---------------------------------------------------------------------------
 def severity_styler(df: pd.DataFrame, column: str = "severity"):
     """Tint whole rows by severity for the exceptions tables."""
-    tints = {"red": "#FCEAE7", "amber": "#FDF2E0", "ok": "#FBFBF9", "green": "#E6F5EC"}
+    tints = {"red": "#FBEAEE", "amber": "#FCF3E4", "ok": "#FBFCFE", "green": "#E7F4EE"}
 
     def paint(row: pd.Series):
         colour = tints.get(str(row.get(column, "")).lower(), "")

@@ -218,6 +218,39 @@ Leads live in **their own Google Sheet**, written through a service account.
 Setup is on the Influencers → *Setup* tab; until it is connected the page
 explains what is needed instead of failing.
 
+## Visual style
+
+The interface follows the glassmorphism rules from
+[uxpilot.ai/blogs/glassmorphism-ui](https://uxpilot.ai/blogs/glassmorphism-ui).
+
+| Rule | How it is applied |
+|---|---|
+| Blur 10-30px | 18px on primary panels, 12px on dense ones, 12/9px on phones |
+| Semi-transparent tint | 0.68 white on panels, 0.90 on tables and forms |
+| Subtle low-contrast borders | 1px white at 0.62, plus an inset rim light |
+| Rounded, pill-like geometry | 20/28px cards, fully rounded controls |
+| One light direction | Rim light on every top edge; all shadows fall the same way |
+| Vibrant backdrop | Fixed blue/violet/teal/magenta gradient, calm where panels sit |
+| Apply selectively | Glass on sidebar, cards, alerts, tabs, toasts — **not** on tables, forms or body copy |
+| Don't animate blur on blurred elements | Glass panels reveal with opacity and lift; the motion-blur entrance is kept for plain content |
+| Non-blur fallback | `@supports` swaps to an opaque panel; `translateZ(0)` composites on the GPU |
+
+**Contrast was solved, not eyeballed.** A darker canvas makes the frost read but
+also darkens every panel on it, so the glass alpha and the text colours were
+computed together. Worst case is the darkest backdrop point (`#A8B1F2`) under a
+0.68 panel, giving `#E3E6FB`. Measured on that: ink 14.2:1, ink-2 7.3:1,
+ink-3 4.5:1, red 4.7:1, amber 4.6:1, green 4.6:1 — all clearing WCAG AA 4.5:1
+for small text. Green, amber and red were darkened from their first draft, which
+measured 4.0-4.2:1 and would have failed on chip and badge labels.
+
+### Charts
+
+Charts keep ggplot's grammar, translated onto glass: a tinted panel behind the
+data (`rgba(255,255,255,0.34)`), white gridlines on the y-axis only, and no
+spines, ticks or zero-lines — so the grid reads as texture rather than
+furniture. The categorical palette uses the article's recommended families
+(blues, violets, teals, magenta).
+
 ## Versions and rolling back
 
 Every release is pushed as its own branch, so going back to an earlier build is

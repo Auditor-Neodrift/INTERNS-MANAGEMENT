@@ -10,10 +10,26 @@ name the branch for each release, and hand you the exact rollback steps.
 """
 from __future__ import annotations
 
-CURRENT = "2.5"
+CURRENT = "2.6"
 
 # Newest first. Keep the last five; older entries can be trimmed.
 VERSIONS: list[dict] = [
+    {
+        "version": "2.6",
+        "name": "Glassmorphism UI",
+        "branch": "v2.6",
+        "date": "15 Sep 2026",
+        "changes": [
+            "Rebuilt the styling to the uxpilot glassmorphism rules: vibrant "
+            "gradient backdrop, frosted panels at 18px blur, one light "
+            "direction, rim-lit edges.",
+            "Glass is applied selectively - sidebar, cards, alerts, tabs - "
+            "while tables and forms stay near-opaque so data reads cleanly.",
+            "Charts follow ggplot's grammar on glass: tinted panel, white "
+            "gridlines, no spines or ticks.",
+            "Green and amber darkened to clear WCAG AA on glass.",
+        ],
+    },
     {
         "version": "2.5",
         "name": "Cleaner version menu",

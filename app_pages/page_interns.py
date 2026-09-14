@@ -168,20 +168,20 @@ def _active_tab(
     with col_a:
         fig = go.Figure()
         fig.add_bar(x=active["name"], y=active["delivered"], name="Delivered",
-                    marker_color="#2E9E5B")
+                    marker_color="#10754F")
         fig.add_bar(x=active["name"], y=active["undelivered"], name="Undelivered",
-                    marker_color="#E08A17")
+                    marker_color="#965708")
         fig.add_bar(x=active["name"], y=active["cancelled"], name="Cancelled",
-                    marker_color="#E0503C")
+                    marker_color="#BD2D46")
         fig.update_layout(barmode="stack", title="Order outcome by intern",
                           yaxis_title="Orders")
         ui.show_chart(fig, height=320)
     with col_b:
         fig = go.Figure()
         fig.add_bar(x=active["name"], y=active["orders"], name="Orders",
-                    marker_color="#1B1B1E")
+                    marker_color="#2F6BFF")
         fig.add_bar(x=active["name"], y=active["reviews_submitted"],
-                    name="Reviews submitted", marker_color="#B9A7F5")
+                    name="Reviews submitted", marker_color="#7C5CFF")
         fig.update_layout(barmode="group", title="Orders vs reviews submitted",
                           yaxis_title="Count")
         ui.show_chart(fig, height=320)
@@ -190,10 +190,10 @@ def _active_tab(
     prog = active.sort_values("days_since_joining", ascending=False)
     fig = go.Figure(go.Bar(
         x=prog["days_since_joining"], y=prog["name"], orientation="h",
-        marker_color=["#E0503C" if e else "#1B1B1E" for e in prog["tenure_elapsed"]],
+        marker_color=["#BD2D46" if e else "#2F6BFF" for e in prog["tenure_elapsed"]],
         text=prog["days_since_joining"].astype("Int64"), textposition="auto",
     ))
-    fig.add_vline(x=tenure_days, line_dash="dash", line_color="#93939E")
+    fig.add_vline(x=tenure_days, line_dash="dash", line_color="#5F6780")
     fig.update_yaxes(autorange="reversed")
     fig.update_layout(xaxis_title=f"Days since joining (dashed line = {tenure_days})")
     ui.show_chart(fig, height=max(240, 34 * len(prog)), legend=False)
@@ -319,11 +319,11 @@ def _daily_tab(main: pd.DataFrame, active: pd.DataFrame, config: dict) -> None:
     )
     fig = go.Figure()
     fig.add_bar(x=totals["day"], y=totals["orders"], name="Orders",
-                marker_color="#1B1B1E")
+                marker_color="#2F6BFF")
     fig.add_bar(x=totals["day"], y=totals["undelivered"], name="Undelivered",
-                marker_color="#E08A17")
+                marker_color="#965708")
     fig.add_bar(x=totals["day"], y=totals["cancelled"], name="Cancelled",
-                marker_color="#E0503C")
+                marker_color="#BD2D46")
     fig.update_layout(barmode="overlay", title="Daily totals", yaxis_title="Orders")
     fig.update_traces(opacity=0.85)
     ui.show_chart(fig, height=300)
@@ -457,8 +457,8 @@ def _scorecard_tab(bundle, main: pd.DataFrame, config: dict, display: dict) -> N
         fig = go.Figure(go.Bar(
             x=top["score"], y=top["intern"], orientation="h",
             marker_color=[
-                "#2E9E5B" if s >= 90 else "#1B1B1E" if s >= 75
-                else "#E08A17" if s >= 60 else "#E0503C" for s in top["score"]
+                "#10754F" if s >= 90 else "#2F6BFF" if s >= 75
+                else "#965708" if s >= 60 else "#BD2D46" for s in top["score"]
             ],
             text=top["score"].round(1), textposition="auto",
         ))
