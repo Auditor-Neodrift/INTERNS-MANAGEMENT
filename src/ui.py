@@ -22,8 +22,8 @@ from theme import CSS as BASE_CSS
 SEVERITY_ORDER = {"red": 0, "amber": 1, "ok": 2, "neutral": 3}
 
 CHART_COLORWAY = [
-    "#2F6BFF", "#7C5CFF", "#14B8C4", "#E0479E", "#10754F",
-    "#965708", "#5A8DEE", "#9B7BFF", "#3FC9D4", "#BD2D46",
+    "#7DA8FF", "#A99BFF", "#5BD6DE", "#F58BC2", "#4ADE80",
+    "#FBBF24", "#93B8FF", "#C4B5FD", "#7DD3FC", "#FB7185",
 ]
 
 
@@ -123,10 +123,10 @@ def _band_text(spec: dict) -> str:
 
 def _colour(severity: str, display: dict) -> str:
     return {
-        "red": display.get("red_hex", "#BD2D46"),
-        "amber": display.get("amber_hex", "#965708"),
-        "green": display.get("green_hex", "#10754F"),
-    }.get(severity, display.get("neutral_hex", "#5F6780"))
+        "red": display.get("red_hex", "#FB7185"),
+        "amber": display.get("amber_hex", "#FBBF24"),
+        "green": display.get("green_hex", "#4ADE80"),
+    }.get(severity, display.get("neutral_hex", "#9AA3B8"))
 
 
 ICONS = {
@@ -355,21 +355,21 @@ def style_chart(fig: go.Figure, height: int = 320, legend: bool = True) -> go.Fi
         margin=dict(l=8, r=8, t=top_margin, b=8),
         colorway=CHART_COLORWAY,
         # ggplot's panel: a light wash the data sits on, not a hard surface
-        plot_bgcolor="rgba(255,255,255,0.34)",
+        plot_bgcolor="rgba(255,255,255,0.05)",
         paper_bgcolor="rgba(0,0,0,0)",
-        font=dict(size=12, color="#414862",
+        font=dict(size=12, color="#C7CEDC",
                   family="Inter, -apple-system, Segoe UI, sans-serif"),
         showlegend=legend,
         legend=dict(
             orientation="h", yanchor="bottom", y=1.0,
             xanchor="left", x=0, title_text="",
-            bgcolor="rgba(0,0,0,0)", font=dict(size=11.5, color="#414862"),
+            bgcolor="rgba(0,0,0,0)", font=dict(size=11.5, color="#C7CEDC"),
         ),
         hovermode="x unified",
         hoverlabel=dict(
-            bgcolor="rgba(255,255,255,0.94)",
-            bordercolor="rgba(140,155,190,0.3)",
-            font=dict(color="#14182B", size=12),
+            bgcolor="rgba(14,19,32,0.96)",
+            bordercolor="rgba(255,255,255,0.18)",
+            font=dict(color="#F2F4F8", size=12),
         ),
         dragmode=False,
         barcornerradius=6,
@@ -377,19 +377,19 @@ def style_chart(fig: go.Figure, height: int = 320, legend: bool = True) -> go.Fi
     if has_title:
         fig.update_layout(
             title=dict(x=0, xanchor="left", y=1, yanchor="top",
-                       font=dict(size=13.5, color="#14182B"),
+                       font=dict(size=13.5, color="#F2F4F8"),
                        pad=dict(t=2, b=10))
         )
     # White gridlines, no spines, no ticks - straight from ggplot
     axis = dict(
         showline=False, zeroline=False, ticks="",
         linecolor="rgba(0,0,0,0)",
-        tickfont=dict(size=11.5, color="#5F6780"),
-        title_font=dict(size=12, color="#414862"),
+        tickfont=dict(size=11.5, color="#9AA3B8"),
+        title_font=dict(size=12, color="#C7CEDC"),
     )
     fig.update_xaxes(showgrid=False, **axis)
     fig.update_yaxes(
-        showgrid=True, gridcolor="rgba(255,255,255,0.85)", gridwidth=1.4, **axis
+        showgrid=True, gridcolor="rgba(255,255,255,0.12)", gridwidth=1.2, **axis
     )
     return fig
 
@@ -413,7 +413,7 @@ def threshold_bands(
     if not spec:
         return fig
     mode = spec.get("mode")
-    green_hex = display.get("green_hex", "#10754F")
+    green_hex = display.get("green_hex", "#4ADE80")
 
     marks = [
         float(spec[k]) for k in ("green", "amber", "min", "max")
@@ -446,7 +446,7 @@ def threshold_bands(
 # ---------------------------------------------------------------------------
 def severity_styler(df: pd.DataFrame, column: str = "severity"):
     """Tint whole rows by severity for the exceptions tables."""
-    tints = {"red": "#FBEAEE", "amber": "#FCF3E4", "ok": "#FBFCFE", "green": "#E7F4EE"}
+    tints = {"red": "#2A1620", "amber": "#2A2112", "ok": "#0E1320", "green": "#12261C"}
 
     def paint(row: pd.Series):
         colour = tints.get(str(row.get(column, "")).lower(), "")

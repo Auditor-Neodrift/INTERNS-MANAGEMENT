@@ -10,10 +10,24 @@ name the branch for each release, and hand you the exact rollback steps.
 """
 from __future__ import annotations
 
-CURRENT = "2.6"
+CURRENT = "2.7"
 
 # Newest first. Keep the last five; older entries can be trimmed.
 VERSIONS: list[dict] = [
+    {
+        "version": "2.7",
+        "name": "Photo backdrop, dark glass",
+        "branch": "v2.7",
+        "date": "15 Sep 2026",
+        "changes": [
+            "The bubble photograph is now the app backdrop, served statically "
+            "and pre-blurred at build time.",
+            "Because the image is near-black the theme flips to dark glass: "
+            "dark translucent panels, light text, cool rim lights.",
+            "Every pill, card, tab and toast is frosted over the photo; tables "
+            "stay near-opaque so data reads cleanly.",
+        ],
+    },
     {
         "version": "2.6",
         "name": "Glassmorphism UI",

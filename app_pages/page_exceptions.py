@@ -77,7 +77,7 @@ def render(bundle, config: dict, embedded: bool = False) -> None:
             fig = go.Figure(go.Bar(
                 x=live["rows_flagged"], y=live["rule"], orientation="h",
                 marker_color=[
-                    "#BD2D46" if s == "red" else "#965708" for s in live["severity"]
+                    "#FB7185" if s == "red" else "#FBBF24" for s in live["severity"]
                 ],
                 text=live["rows_flagged"], textposition="auto",
             ))
@@ -107,7 +107,7 @@ def render(bundle, config: dict, embedded: bool = False) -> None:
                 .agg(Rows=("order_id", "size"))
             )
             fig = go.Figure()
-            for sev, colour in (("red", "#BD2D46"), ("amber", "#965708")):
+            for sev, colour in (("red", "#FB7185"), ("amber", "#FBBF24")):
                 part = area[area["severity"] == sev]
                 if not part.empty:
                     fig.add_bar(x=part["group"], y=part["Rows"],
@@ -122,7 +122,7 @@ def render(bundle, config: dict, embedded: bool = False) -> None:
                 .sort_values("ym")
             )
             fig = go.Figure()
-            for sev, colour in (("red", "#BD2D46"), ("amber", "#965708")):
+            for sev, colour in (("red", "#FB7185"), ("amber", "#FBBF24")):
                 part = per_month[per_month["severity"] == sev]
                 if not part.empty:
                     fig.add_bar(x=part["ym"], y=part["Rows"],

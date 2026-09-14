@@ -230,26 +230,42 @@ The interface follows the glassmorphism rules from
 | Subtle low-contrast borders | 1px white at 0.62, plus an inset rim light |
 | Rounded, pill-like geometry | 20/28px cards, fully rounded controls |
 | One light direction | Rim light on every top edge; all shadows fall the same way |
-| Vibrant backdrop | Fixed blue/violet/teal/magenta gradient, calm where panels sit |
+| Vibrant backdrop | A photograph (`static/bg.jpg`), fixed, behind a scrim that tames its highlights |
 | Apply selectively | Glass on sidebar, cards, alerts, tabs, toasts — **not** on tables, forms or body copy |
 | Don't animate blur on blurred elements | Glass panels reveal with opacity and lift; the motion-blur entrance is kept for plain content |
 | Non-blur fallback | `@supports` swaps to an opaque panel; `translateZ(0)` composites on the GPU |
 
-**Contrast was solved, not eyeballed.** A darker canvas makes the frost read but
-also darkens every panel on it, so the glass alpha and the text colours were
-computed together. Worst case is the darkest backdrop point (`#A8B1F2`) under a
-0.68 panel, giving `#E3E6FB`. Measured on that: ink 14.2:1, ink-2 7.3:1,
-ink-3 4.5:1, red 4.7:1, amber 4.6:1, green 4.6:1 — all clearing WCAG AA 4.5:1
-for small text. Green, amber and red were darkened from their first draft, which
-measured 4.0-4.2:1 and would have failed on chip and badge labels.
+**The backdrop is a photograph, and it decided the theme.** The supplied image
+is effectively black — mean RGB (4,4,4), median luminance 0.00 — with sparse
+bright highlights on the bubbles. Light panels over it would grey the photo out
+and hide the only part worth seeing, so the app runs the article's *dark-mode*
+guidance instead: dark tints, light text, gentler shadows, and a cool rim rather
+than pure white.
+
+**Contrast was solved, not eyeballed.** A scrim at `rgba(7,10,18,.55)` pulls the
+bubble highlights from 240 down to ~112 so no panel straddles a hard
+light-to-dark jump. Panels are `#0E1320` at .72, which resolves to `#292D38`
+over the brightest highlight and `#0B0F1A` over black. Measured on the worst
+case: ink 12.4:1, ink-2 8.7:1, ink-3 5.4:1, green 7.9:1, amber 8.2:1, red 5.1:1,
+blue 5.8:1 — all clearing WCAG AA 4.5:1 for small text.
+
+**Depth comes from the edge, not the fill.** A dark panel on a black photo
+differs from its canvas by only ~1.06:1 in fill, and no realistic opacity fixes
+that — so separation is carried by the 1px border and rim light, which is what
+the article prescribes for dark mode.
+
+The image is resized to 1920px and pre-blurred at build time (the article notes
+this cuts the runtime cost of the CSS filter) and served from `static/` via
+`enableStaticServing`, so the browser caches it instead of re-sending it on
+every rerun.
 
 ### Charts
 
-Charts keep ggplot's grammar, translated onto glass: a tinted panel behind the
-data (`rgba(255,255,255,0.34)`), white gridlines on the y-axis only, and no
+Charts keep ggplot's grammar, translated onto dark glass: a faint panel behind
+the data (`rgba(255,255,255,0.05)`), light gridlines on the y-axis only, and no
 spines, ticks or zero-lines — so the grid reads as texture rather than
-furniture. The categorical palette uses the article's recommended families
-(blues, violets, teals, magenta).
+furniture. The categorical palette uses light tints of the article's
+recommended families (blues, violets, teals, magenta).
 
 ## Versions and rolling back
 

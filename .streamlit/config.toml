@@ -1,14 +1,16 @@
 [theme]
-base = "light"
-primaryColor = "#2F6BFF"
-backgroundColor = "#EEF3FF"
-secondaryBackgroundColor = "#FFFFFF"
-textColor = "#14182B"
+base = "dark"
+primaryColor = "#7DA8FF"
+backgroundColor = "#080B14"
+secondaryBackgroundColor = "#0E1320"
+textColor = "#F2F4F8"
 font = "sans serif"
 
 [server]
 enableXsrfProtection = true
 enableCORS = true
+# Serves files from ./static at app/static/<name> - used for the background image.
+enableStaticServing = true
 
 [browser]
 gatherUsageStats = false

@@ -7,6 +7,7 @@ env/
 .DS_Store
 Thumbs.db
 *.xlsx
+!static/*.jpg
 !config/*.json
 .idea/
 .vscode/
