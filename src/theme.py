@@ -198,8 +198,10 @@ def css(theme: str = DEFAULT_THEME, dark_bg: str = DEFAULT_DARK_BG,
 
 {_backdrop(theme, dark_bg, light_bg)}
   .stApp, [data-testid="stMain"] {{ font-family: var(--font); color: var(--ink-2); }}
+  /* The theme dock is fixed to the top-right, so the first row of content has
+     to start below it - otherwise it lands on top of a section heading. */
   [data-testid="stMain"] .block-container {{
-    padding-top: 2.4rem; padding-bottom: 4rem; max-width: 1520px;
+    padding-top: 5.6rem; padding-bottom: 4rem; max-width: 1520px;
   }}
   footer, #MainMenu {{ visibility: hidden; }}
 
@@ -273,20 +275,28 @@ def css(theme: str = DEFAULT_THEME, dark_bg: str = DEFAULT_DARK_BG,
   [data-testid="stSidebar"] [data-testid="stMetricValue"] {{ color: var(--ink); }}
   [data-testid="stSidebar"] hr {{ border-color: var(--edge-soft); }}
 
-  /* ---------- motion ---------- */
+  /* ---------- motion ----------
+     The reveal must not put `filter` on anything that contains glass. An
+     element with any filter value - blur(0px) included - becomes a backdrop
+     root, and a descendant's backdrop-filter then samples inside that empty
+     ancestor instead of the page behind it, so the glass stops blurring
+     entirely. So containers lift and fade only, and the motion-blur entrance
+     is reserved for headings and notes, which never host a glass panel. */
   @keyframes riseIn {{
-    0%   {{ opacity: 0; transform: translateY(14px) scale(.994); filter: blur(10px); }}
+    0%   {{ opacity: 0; transform: translateY(14px); filter: blur(10px); }}
     60%  {{ opacity: 1; }}
     100% {{ opacity: 1; transform: none; filter: blur(0); }}
   }}
   @keyframes liftIn {{
-    0%   {{ opacity: 0; transform: translateY(12px) translateZ(0); }}
-    100% {{ opacity: 1; transform: translateZ(0); }}
+    0%   {{ opacity: 0; transform: translateY(12px); }}
+    100% {{ opacity: 1; transform: none; }}
   }}
   [data-testid="stMain"] [data-testid="stElementContainer"],
   [data-testid="stMain"] [data-testid="stVerticalBlockBorderWrapper"] {{
-    animation: riseIn .55s var(--ease) both;
+    animation: liftIn .5s var(--ease) both;
   }}
+  [data-testid="stMain"] h1, [data-testid="stMain"] h3,
+  .section-note, .src-note {{ animation: riseIn .55s var(--ease) both; }}
   [data-testid="stMain"] [data-testid="stElementContainer"]:nth-child(1) {{ animation-delay: 0s }}
   [data-testid="stMain"] [data-testid="stElementContainer"]:nth-child(2) {{ animation-delay: .04s }}
   [data-testid="stMain"] [data-testid="stElementContainer"]:nth-child(3) {{ animation-delay: .08s }}
@@ -295,13 +305,39 @@ def css(theme: str = DEFAULT_THEME, dark_bg: str = DEFAULT_DARK_BG,
   [data-testid="stMain"] [data-testid="stElementContainer"]:nth-child(n+6) {{ animation-delay: .2s }}
   [data-baseweb="tab-panel"] {{ animation: liftIn .4s var(--ease) both; }}
 
+  /* ---------- charts on glass ----------
+     Plotly renders into the DOM, so the chart block can frost like any other
+     panel. The figure keeps ggplot's pale panel wash; the frost sits behind
+     it, which is what stops the backdrop photograph showing through sharp. */
+  [data-testid="stPlotlyChart"] {{
+    background: var(--panel);
+    border: 1px solid var(--edge);
+    border-radius: var(--r);
+    box-shadow: var(--shadow);
+    padding: .55rem .5rem .3rem .5rem;
+    -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur);
+    overflow: hidden;
+  }}
+  [data-testid="stPlotlyChart"] .main-svg {{ background: transparent !important; }}
+  @media (max-width: 640px) {{
+    [data-testid="stPlotlyChart"] {{ padding: .4rem .3rem .2rem .3rem; border-radius: var(--r-sm); }}
+  }}
+
   /* ---------- theme switch, pinned top-right ---------- */
+  /* Streamlit's own header is opaque and sits at z-index 999990, so the dock
+     has to clear its height *and* outrank it or the top of the control is
+     painted over. backdrop-filter on the dock itself is safe - it only breaks
+     a fixed element's positioning when an *ancestor* carries it. */
   .st-key-theme_dock {{
-    position: fixed; top: 3.1rem; right: 1.1rem; z-index: 9995;
+    position: fixed; top: 4.5rem; right: 1.1rem; z-index: 999991;
     width: auto !important;
+    padding: .28rem; border-radius: 999px;
+    background: var(--panel-strong);
+    border: 1px solid var(--edge);
+    box-shadow: var(--shadow);
+    -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur);
     animation: none !important; filter: none !important;
     transform: none !important;
-    -webkit-backdrop-filter: none !important; backdrop-filter: none !important;
   }}
   .st-key-theme_dock [data-testid="stSegmentedControl"] button {{
     font-size: .76rem !important; padding: .3rem .7rem !important;
@@ -315,7 +351,13 @@ def css(theme: str = DEFAULT_THEME, dark_bg: str = DEFAULT_DARK_BG,
     -webkit-backdrop-filter: none !important; backdrop-filter: none !important;
   }}
   @media (max-width: 640px) {{
-    .st-key-theme_dock {{ top: 2.7rem; right: .5rem; }}
+    /* Hug the right rather than stretch, and get out of the way while the
+       sidebar is open - on a phone the sidebar is a full-height overlay at
+       the same stacking level, so a pinned dock would sit on top of it. */
+    .st-key-theme_dock {{ top: 4.1rem; right: .5rem; }}
+    body:has([data-testid="stSidebar"][aria-expanded="true"]) .st-key-theme_dock {{
+      display: none;
+    }}
     .st-key-theme_dock [data-testid="stSegmentedControl"] button {{
       font-size: .68rem !important; padding: .24rem .5rem !important;
     }}
@@ -364,7 +406,7 @@ def css(theme: str = DEFAULT_THEME, dark_bg: str = DEFAULT_DARK_BG,
     animation: liftIn .46s var(--ease) both;
   }}
   .kpi-card:hover {{
-    transform: translateY(-3px) translateZ(0);
+    transform: translateY(-3px);
     box-shadow: var(--shadow-hi), var(--rim);
   }}
   .kpi-grid .kpi-card:nth-child(1) {{ animation-delay: 0s }}
@@ -463,7 +505,7 @@ def css(theme: str = DEFAULT_THEME, dark_bg: str = DEFAULT_DARK_BG,
     transition: transform .32s var(--ease), box-shadow .32s var(--ease);
     background: linear-gradient(180deg, var(--amber-tint), var(--panel));
   }}
-  .alert-mini:hover {{ transform: translateY(-2px) translateZ(0); box-shadow: var(--shadow-hi), var(--rim); }}
+  .alert-mini:hover {{ transform: translateY(-2px); box-shadow: var(--shadow-hi), var(--rim); }}
   .alert-mini.red {{
     border-left-color: var(--red);
     background: linear-gradient(180deg, var(--red-tint), var(--panel));
@@ -528,8 +570,8 @@ def css(theme: str = DEFAULT_THEME, dark_bg: str = DEFAULT_DARK_BG,
   }}
   .toast-close:hover {{ color: var(--ink); }}
   @keyframes toastIn {{
-    0%   {{ opacity: 0; transform: translateX(22px) translateZ(0); }}
-    100% {{ opacity: 1; transform: translateZ(0); }}
+    0%   {{ opacity: 0; transform: translateX(22px); }}
+    100% {{ opacity: 1; transform: none; }}
   }}
   @media (max-width: 640px) {{
     .toast-stack {{ width: calc(100vw - 24px); right: 12px; bottom: 12px; gap: .35rem; }}
@@ -698,7 +740,7 @@ def css(theme: str = DEFAULT_THEME, dark_bg: str = DEFAULT_DARK_BG,
   /* ---------- phones ---------- */
   @media (max-width: 640px) {{
     [data-testid="stMain"] .block-container {{
-      padding-left: .75rem; padding-right: .75rem; padding-top: 3.4rem;
+      padding-left: .75rem; padding-right: .75rem; padding-top: 6.6rem;
     }}
     .kpi-grid {{ grid-template-columns: repeat(auto-fit, minmax(146px, 1fr)); gap: .55rem; }}
     .kpi-card {{ padding: .8rem .85rem; border-radius: 16px; }}
@@ -719,7 +761,8 @@ def css(theme: str = DEFAULT_THEME, dark_bg: str = DEFAULT_DARK_BG,
   @media (prefers-reduced-motion: reduce) {{
     *, [data-testid="stMain"] [data-testid="stElementContainer"],
     .kpi-card, .callout, .g-hero, .g-alert, .alert-mini, .toast,
-    .signin-card, [data-baseweb="tab-panel"] {{
+    .signin-card, [data-baseweb="tab-panel"],
+    [data-testid="stMain"] h1, [data-testid="stMain"] h3 {{
       animation: none !important; transition: none !important; filter: none !important;
     }}
   }}

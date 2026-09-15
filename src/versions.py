@@ -10,10 +10,27 @@ name the branch for each release, and hand you the exact rollback steps.
 """
 from __future__ import annotations
 
-CURRENT = "2.8"
+CURRENT = "2.9"
 
 # Newest first. Keep the last five; older entries can be trimmed.
 VERSIONS: list[dict] = [
+    {
+        "version": "2.9",
+        "name": "Glass actually frosts",
+        "branch": "v2.9",
+        "date": "15 Sep 2026",
+        "changes": [
+            "Fixed the glass: the page reveal was putting a filter on every "
+            "container, which silently switched off the blur on every card, "
+            "pill and panel inside it.",
+            "Charts are frosted panels now too, instead of showing the "
+            "backdrop through sharp.",
+            "The theme switch no longer hides under the header or sits on top "
+            "of a section heading.",
+            "Saving a background image no longer crashes the Settings page, "
+            "and the uploaded file shows up straight away.",
+        ],
+    },
     {
         "version": "2.8",
         "name": "Four themes, crystal glass",

@@ -319,21 +319,15 @@ def _display_tab(config: dict) -> None:
 
     col_dark, col_light = st.columns(2)
     with col_dark:
-        display["bg_dark"] = st.text_input(
-            "Dark theme background", key="set_bg_dark",
-            value=display.get("bg_dark", theme_mod.DEFAULT_DARK_BG),
-            placeholder="app/static/bg.jpg or https://...",
-            help="Used by Dark - Glass. Leave empty for a plain gradient.",
-        )
-        _bg_upload("dark", display)
+        _bg_controls("dark", display, "Dark theme background",
+                     "app/static/bg.jpg or https://...",
+                     "Used by Dark - Glass. Leave empty for a plain gradient.",
+                     theme_mod.DEFAULT_DARK_BG)
     with col_light:
-        display["bg_light"] = st.text_input(
-            "Light theme background", key="set_bg_light",
-            value=display.get("bg_light", theme_mod.DEFAULT_LIGHT_BG),
-            placeholder="app/static/bg-light.jpg or https://...",
-            help="Used by Light - Glass. Leave empty for a plain gradient.",
-        )
-        _bg_upload("light", display)
+        _bg_controls("light", display, "Light theme background",
+                     "app/static/bg-light.jpg or https://...",
+                     "Used by Light - Glass. Leave empty for a plain gradient.",
+                     theme_mod.DEFAULT_LIGHT_BG)
 
     ui.callout(
         [
@@ -420,27 +414,56 @@ def _display_tab(config: dict) -> None:
         st.rerun()
 
 
-def _bg_upload(mode: str, display: dict) -> None:
-    """Optional upload that lands in static/ and fills in the path field."""
+def _bg_controls(mode: str, display: dict, label: str, placeholder: str,
+                 help_text: str, default: str) -> None:
+    """Path field plus an optional upload, for one theme mode.
+
+    The uploader is rendered *before* the text field on purpose. Writing to a
+    widget's session_state key after that widget has been instantiated in the
+    same run raises StreamlitWidgetAlreadyInstantiatedError, so the upload has
+    to seed the field's state before the field exists.
+    """
+    key, done_key = f"set_bg_{mode}", f"_bg_saved_{mode}"
+    if key not in st.session_state:
+        st.session_state[key] = display.get(f"bg_{mode}", default)
+
     upload = st.file_uploader(
-        f"…or upload a {mode} image", type=["jpg", "jpeg", "png", "webp"],
+        f"Upload a {mode} background", type=["jpg", "jpeg", "png", "webp"],
         key=f"bg_up_{mode}", label_visibility="collapsed",
     )
-    if upload is None:
-        return
+    if upload is not None:
+        # The uploader keeps returning the same file on every rerun, so the
+        # write is keyed on its identity to avoid a rerun loop.
+        signature = f"{upload.name}:{upload.size}"
+        if st.session_state.get(done_key) != signature:
+            saved = _save_background(upload, mode)
+            if saved:
+                display[f"bg_{mode}"] = saved
+                st.session_state[key] = saved
+                st.session_state[done_key] = signature
+                _flash(f"Background saved as {saved.rsplit('/', 1)[-1]}.")
+                st.rerun()
+
+    value = st.text_input(label, key=key, placeholder=placeholder, help=help_text)
+    display[f"bg_{mode}"] = value
+
+
+def _save_background(upload, mode: str) -> str | None:
+    """Write an uploaded image into static/ and return its app-relative path."""
     static = pathlib.Path(__file__).resolve().parent.parent / "static"
-    static.mkdir(exist_ok=True)
     suffix = pathlib.Path(upload.name).suffix.lower() or ".jpg"
+    if suffix not in (".jpg", ".jpeg", ".png", ".webp"):
+        st.error("Use a JPG, PNG or WebP image.")
+        return None
     target = static / f"bg-{mode}{suffix}"
     try:
+        static.mkdir(parents=True, exist_ok=True)
         target.write_bytes(upload.getvalue())
     except OSError as exc:
         st.error(f"Could not save the image: {exc}")
-        return
-    display[f"bg_{mode}"] = f"app/static/{target.name}"
-    st.session_state[f"set_bg_{mode}"] = display[f"bg_{mode}"]
-    st.success(f"Saved as {target.name}.", icon=":material/check:")
-    st.rerun()
+        return None
+    # Bust the browser cache so a replaced file is actually re-fetched.
+    return f"app/static/{target.name}?v={target.stat().st_mtime_ns}"
 
 
 # ---------------------------------------------------------------------------
