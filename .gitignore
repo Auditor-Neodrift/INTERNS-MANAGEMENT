@@ -9,5 +9,8 @@ Thumbs.db
 *.xlsx
 !static/*.jpg
 !config/*.json
+# Runtime data, not configuration: the reflection remarks and
+# checker sign-offs the app writes when no service account is set.
+config/reflection_notes.json
 .idea/
 .vscode/

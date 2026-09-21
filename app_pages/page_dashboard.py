@@ -175,6 +175,9 @@ def render(bundle, config: dict) -> None:
                 tone="amber",
             )
 
+    # ---- review incentive from the promised stipend --------------------
+    _incentive_block(interns, config, display)
+
     # ---- three period blocks -------------------------------------------
     ui.section(
         "Period summaries",
@@ -286,6 +289,56 @@ def render(bundle, config: dict) -> None:
         f"{main['order_date'].min():%d %b %Y} to {main['order_date'].max():%d %b %Y}. "
         f"Pulled {bundle.loaded_at:%d %b %Y %H:%M}."
     )
+
+
+def _incentive_block(interns: pd.DataFrame, config: dict, display: dict) -> None:
+    """The stipend-derived review incentive, summarised.
+
+    Whole-roster rather than period-scoped: a stipend is promised against a
+    full tenure, so there is no honest way to slice it by month.
+    """
+    target = int(display.get("review_target_per_tenure",
+                             metrics.REVIEW_TARGET) or metrics.REVIEW_TARGET)
+    basis = str(display.get("incentive_basis", "submitted"))
+    _, basis_label = metrics.INCENTIVE_BASES.get(
+        basis, metrics.INCENTIVE_BASES["submitted"])
+
+    table = metrics.review_incentive(interns, target, basis)
+    totals = metrics.incentive_totals(table)
+    if not totals["interns"]:
+        return
+
+    ui.section(
+        "Review incentives (from the promised stipend)",
+        f"Stipend on the roster divided by {target} reviews per full tenure, "
+        f"times {basis_label}. Detail on the Payments & Money page.",
+    )
+    ui.render_kpis(
+        [
+            ui.kpi("Review Incentive Pool", totals["total"], unit="Rs",
+                   tone="neutral",
+                   sub=f"{totals['reviews']} {basis_label} across "
+                       f"{totals['with_stipend']} interns"),
+            ui.kpi("Average per Review", totals["avg_per_review"], unit="Rs",
+                   tone="neutral", sub=f"stipend / {target}"),
+            ui.kpi("Stipend Coverage", totals["coverage"], unit="%",
+                   tone="red" if (totals["coverage"] or 0) < 60 else "amber",
+                   sub=f"{totals['without_stipend']} interns have no stipend "
+                       "recorded"),
+            ui.kpi("Active Interns Covered", totals["active_with_stipend"],
+                   unit="n",
+                   tone="red" if not totals["active_with_stipend"] else "green",
+                   sub=f"of {totals['active']} active right now"),
+        ],
+        config,
+    )
+    if totals["active"] and not totals["active_with_stipend"]:
+        ui.callout(
+            [f"None of the {totals['active']} interns working right now has a "
+             "stipend recorded on the roster, so their review incentive "
+             "cannot be worked out."],
+            "amber", title="No stipend for the active roster",
+        )
 
 
 def _period_block(kpis: dict, prev: dict, config: dict, delta_note: str) -> None:

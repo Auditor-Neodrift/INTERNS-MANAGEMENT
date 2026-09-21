@@ -10,6 +10,7 @@ import streamlit as st
 
 import common
 import metrics
+import reflection
 import ui
 
 STATUS_TONE = {
@@ -62,12 +63,16 @@ def render(bundle, config: dict) -> None:
     active = interns[interns["is_active"]]
     urgent = alerts[alerts["severity"] == "red"] if not alerts.empty else alerts
 
-    if not alerts.empty:
-        _alert_summary(alerts)
+    # Order-level errors from the reflection rate report: rows the checker has
+    # not signed off yet. Counted here so the pill sits with the other alerts.
+    reflect_open = _unchecked_reflections(main, display)
+
+    if not alerts.empty or reflect_open:
+        _alert_summary(alerts, reflect_open)
 
     tabs = st.tabs([
         f"Active now ({len(active)})", "All interns", "Daily activity",
-        f"Alerts ({len(alerts)})", "Scorecards",
+        f"Alerts ({len(alerts) + reflect_open})", "Scorecards",
     ])
 
     with tabs[0]:
@@ -77,7 +82,8 @@ def render(bundle, config: dict) -> None:
     with tabs[2]:
         _daily_tab(main, active, config)
     with tabs[3]:
-        _alerts_tab(alerts, tenure_days, idle_days, cancel_pct)
+        _alerts_tab(alerts, tenure_days, idle_days, cancel_pct,
+                    reflect_open, display)
     with tabs[4]:
         _scorecard_tab(bundle, main, config, display)
 
@@ -85,10 +91,28 @@ def render(bundle, config: dict) -> None:
 # ---------------------------------------------------------------------------
 # Banner
 # ---------------------------------------------------------------------------
-def _alert_summary(alerts: pd.DataFrame) -> None:
+def _unchecked_reflections(main: pd.DataFrame, display: dict) -> int:
+    """How many unreflected orders the checker has not signed off."""
+    try:
+        rows = reflection.report(
+            main,
+            int(display.get("reflection_sla_days",
+                            reflection.DEFAULT_SLA_DAYS) or 15),
+            bool(display.get("reflection_delivered_only", False)),
+        )
+        merged = reflection.merge_notes(rows, reflection.load_notes())
+        return int(reflection.summarise(merged)["unchecked"])
+    except Exception:  # noqa: BLE001 - an alert count must never break the page
+        return 0
+
+
+def _alert_summary(alerts: pd.DataFrame, reflect_open: int = 0) -> None:
     """Category chips only - the urgent detail lives in the bottom-right
     notifications and the Alerts tab, so the top of the page stays readable."""
-    counts = alerts["kind"].value_counts()
+    counts = (
+        alerts["kind"].value_counts() if not alerts.empty
+        else pd.Series(dtype=int)
+    )
     ui.chips([
         (f"{int(counts.get('clerical', 0))} clerical errors",
          "red" if counts.get("clerical") else "green"),
@@ -98,6 +122,8 @@ def _alert_summary(alerts: pd.DataFrame) -> None:
          "red" if counts.get("cancellation") else "green"),
         (f"{int(counts.get('tenure', 0))} tenure reviews due",
          "amber" if counts.get("tenure") else "green"),
+        (f"{reflect_open} unreflected awaiting checker",
+         "red" if reflect_open else "green"),
     ])
 
 
@@ -356,7 +382,10 @@ ALERT_GROUPS = [
 
 
 def _alerts_tab(alerts: pd.DataFrame, tenure_days: int, idle_days: int,
-                cancel_pct: float) -> None:
+                cancel_pct: float, reflect_open: int = 0,
+                display: dict | None = None) -> None:
+    _reflection_alert(reflect_open, display or {})
+
     if alerts.empty:
         ui.callout(
             ["No clerical errors, idle interns, high cancellation rates or "
@@ -413,6 +442,33 @@ def _alerts_tab(alerts: pd.DataFrame, tenure_days: int, idle_days: int,
         ui.show_table(table, height=400)
         ui.download_row({"intern alerts": table}, excel_name="intern-alerts",
                         key_prefix="alerts")
+
+
+def _reflection_alert(reflect_open: int, display: dict) -> None:
+    """Order-level errors from the reflection rate report.
+
+    These are not intern alerts - they hang off an order ID - but they are
+    errors someone has to clear, so they are counted here too. The worklist
+    itself lives on Orders & Audit -> Reflection rate report.
+    """
+    sla = int(display.get("reflection_sla_days",
+                          reflection.DEFAULT_SLA_DAYS) or 15)
+    ui.section("Reflection rate report")
+    if not reflect_open:
+        ui.callout(
+            ["Every unreflected order has been signed off by the checker."],
+            "green", title="Reflection worklist clear",
+        )
+        return
+    ui.chips([(f"{reflect_open} errors awaiting checker", "red")])
+    ui.callout(
+        [f"<strong>{reflect_open}</strong> orders have had a review submitted "
+         f"but not reflected for more than {sla} days, and the checker has "
+         "not ticked them off yet.",
+         "Open <strong>Orders &amp; Audit &rarr; Reflection rate report</strong> "
+         "to write the reason against each order ID and sign it off."],
+        "red", title="Unreflected orders awaiting sign-off",
+    )
 
 
 def _render_alert_cards(sub: pd.DataFrame) -> None:

@@ -153,7 +153,8 @@ def render(bundle, config: dict) -> None:
     ui.section("Worklists", "Each tab is an actionable list you can export.")
     tabs = st.tabs([
         "Payment pending", "Paid but not reflected", "Paid but not delivered",
-        "No Amazon price", "Price mismatch", "By intern", "Payment text",
+        "No Amazon price", "Price mismatch", "By intern", "Review incentives",
+        "Payment text",
     ])
 
     pending = period[period["is_payment_pending"]]
@@ -244,6 +245,9 @@ def render(bundle, config: dict) -> None:
             )
 
     with tabs[6]:
+        _incentive_tab(bundle, config, symbol)
+
+    with tabs[7]:
         ui.note(
             "The raw REVIEW PAYMENT text, and how each spelling was classified. "
             "Anything landing in UNKNOWN needs the wording cleaned up in the sheet."
@@ -270,6 +274,97 @@ def render(bundle, config: dict) -> None:
         excel_name="money-audit",
         key_prefix="money",
     )
+
+
+def _incentive_tab(bundle, config: dict, symbol: str) -> None:
+    """What the promised stipend works out to per review, and in total.
+
+    Deliberately whole-tenure rather than scoped to the month picker: the
+    stipend is promised against a full tenure, so slicing it by month would
+    invent a number the roster never promised.
+    """
+    display = config.get("display", {})
+    target = int(display.get("review_target_per_tenure",
+                             metrics.REVIEW_TARGET) or metrics.REVIEW_TARGET)
+    basis = str(display.get("incentive_basis", "submitted"))
+    _, basis_label = metrics.INCENTIVE_BASES.get(
+        basis, metrics.INCENTIVE_BASES["submitted"])
+
+    interns = metrics.intern_table(
+        bundle.main, bundle.roster,
+        tenure_days=int(display.get("tenure_days", 30) or 30),
+    )
+    table = metrics.review_incentive(interns, target, basis)
+    totals = metrics.incentive_totals(table)
+
+    ui.note(
+        f"Stipend promised on the roster divided by {target} reviews - the "
+        f"average full-tenure target - is what one review is worth. Multiplied "
+        f"by {basis_label}, that is the incentive. Interns are matched to MAIN "
+        "on name. Both the divisor and the basis are on the Settings page, and "
+        "nothing is written back to the sheet."
+    )
+
+    if table.empty:
+        ui.empty_state("No interns on the roster.")
+        return
+
+    ui.render_kpis(
+        [
+            ui.kpi("Review Incentive Pool", totals["total"], unit="Rs",
+                   tone="neutral",
+                   sub=f"{totals['with_stipend']} interns with a stipend "
+                       f"recorded · {totals['reviews']} {basis_label}"),
+            ui.kpi("Average per Review", totals["avg_per_review"], unit="Rs",
+                   tone="neutral", sub=f"stipend / {target}"),
+            ui.kpi("Stipend Coverage", totals["coverage"], unit="%",
+                   tone="red" if (totals["coverage"] or 0) < 60 else "amber",
+                   sub=f"{totals['without_stipend']} of {totals['interns']} "
+                       "interns have no stipend recorded"),
+            ui.kpi("Active Interns Covered", totals["active_with_stipend"],
+                   unit="n",
+                   tone="red" if not totals["active_with_stipend"] else "green",
+                   sub=f"of {totals['active']} currently active"),
+        ],
+        config,
+    )
+
+    if totals["without_stipend"]:
+        gaps = table[~table["stipend_recorded"]]["name"].head(8).tolist()
+        more = totals["without_stipend"] - len(gaps)
+        ui.callout(
+            [f"<strong>{totals['without_stipend']}</strong> of "
+             f"{totals['interns']} interns have no stipend on the roster, so "
+             "no incentive can be worked out for them: "
+             + ", ".join(str(n) for n in gaps)
+             + (f" and {more} more." if more > 0 else "."),
+             f"That includes <strong>{totals['active'] - totals['active_with_stipend']}"
+             f"</strong> of the {totals['active']} interns working right now."
+             if totals["active"] else ""],
+            "amber", title="Stipend is missing for most of the roster",
+        )
+
+    view = table.rename(columns={
+        "name": "Intern", "status": "Status", "stipend": f"Stipend ({symbol})",
+        "per_review": f"Per review ({symbol})", "orders": "Orders",
+        "reviews_submitted": "Reviews submitted",
+        "reviews_reflected": "Reviews reflected",
+        "reviews_counted": "Reviews counted",
+        "incentive": f"Incentive ({symbol})",
+    })[["Intern", "Status", f"Stipend ({symbol})", f"Per review ({symbol})",
+        "Orders", "Reviews submitted", "Reviews reflected", "Reviews counted",
+        f"Incentive ({symbol})"]]
+    st.dataframe(
+        view.style.format(
+            {f"Stipend ({symbol})": "{:,.0f}",
+             f"Per review ({symbol})": "{:,.2f}",
+             f"Incentive ({symbol})": "{:,.0f}"},
+            na_rep="not recorded",
+        ),
+        width="stretch", hide_index=True, height=420,
+    )
+    ui.download_row({"review incentives": view},
+                    excel_name="review-incentives", key_prefix="incentive")
 
 
 def _apply_scope(main: pd.DataFrame, scope: str, ym: str) -> pd.DataFrame:

@@ -805,3 +805,84 @@ def _fmt_pct(value) -> str:
         return f"{float(value):.1f}%"
     except (TypeError, ValueError):
         return "-"
+
+
+# ---------------------------------------------------------------------------
+# Review incentive from the promised stipend
+# ---------------------------------------------------------------------------
+REVIEW_TARGET = 25          # average reviews expected across a full tenure
+INCENTIVE_BASES = {
+    "submitted": ("reviews_submitted", "reviews submitted"),
+    "reflected": ("reviews_reflected", "reviews reflected"),
+}
+
+
+def review_incentive(
+    interns: pd.DataFrame,
+    target_reviews: int = REVIEW_TARGET,
+    basis: str = "submitted",
+) -> pd.DataFrame:
+    """Per-review incentive per intern, derived from the promised stipend.
+
+    A full tenure is worth `target_reviews` reviews on average, so the stipend
+    promised on the roster divided by that target is what one review is worth
+    to the intern. Multiply by the reviews they actually produced and you have
+    what the incentive comes to.
+
+    The stipend is read from the roster and nothing is written back: this is a
+    view of the promise, not a payroll instruction. Interns with no stipend
+    recorded keep a NaN rate rather than a zero, so "not recorded" stays
+    visibly different from "worth nothing".
+    """
+    column, _ = INCENTIVE_BASES.get(basis, INCENTIVE_BASES["submitted"])
+    cols = ["name", "status", "is_active", "stipend", "orders",
+            "reviews_submitted", "reviews_reflected"]
+    if interns is None or interns.empty:
+        out = pd.DataFrame(columns=cols + ["per_review", "reviews_counted",
+                                           "incentive", "target_reviews",
+                                           "stipend_recorded"])
+        return out
+
+    out = interns.reindex(columns=cols).copy()
+    target = float(target_reviews) if target_reviews else float(REVIEW_TARGET)
+
+    stipend = pd.to_numeric(out["stipend"], errors="coerce")
+    # A zero or negative stipend is not a promise, so it does not become a rate.
+    out["stipend"] = stipend.where(stipend > 0)
+    out["stipend_recorded"] = out["stipend"].notna()
+    out["per_review"] = out["stipend"] / target
+    out["reviews_counted"] = pd.to_numeric(
+        out[column], errors="coerce").fillna(0).astype(int)
+    out["incentive"] = out["per_review"] * out["reviews_counted"]
+    out["target_reviews"] = int(target)
+    for col in ("orders", "reviews_submitted", "reviews_reflected"):
+        out[col] = pd.to_numeric(out[col], errors="coerce").fillna(0).astype(int)
+    out["is_active"] = out["is_active"].fillna(False).astype(bool)
+    return out.sort_values(
+        ["incentive", "reviews_counted"], ascending=False, na_position="last"
+    ).reset_index(drop=True)
+
+
+def incentive_totals(table: pd.DataFrame) -> dict:
+    """Headline numbers for the payments tab and the dashboard card."""
+    if table is None or table.empty:
+        return {"interns": 0, "with_stipend": 0, "without_stipend": 0,
+                "coverage": None, "total": 0.0, "reviews": 0,
+                "avg_per_review": None, "active_with_stipend": 0,
+                "active": 0}
+    recorded = table[table["stipend_recorded"]]
+    active = table[table["is_active"]]
+    total = float(pd.to_numeric(recorded["incentive"], errors="coerce")
+                  .fillna(0).sum())
+    reviews = int(recorded["reviews_counted"].sum())
+    return {
+        "interns": int(len(table)),
+        "with_stipend": int(len(recorded)),
+        "without_stipend": int(len(table) - len(recorded)),
+        "coverage": (100.0 * len(recorded) / len(table)) if len(table) else None,
+        "total": total,
+        "reviews": reviews,
+        "avg_per_review": (total / reviews) if reviews else None,
+        "active": int(len(active)),
+        "active_with_stipend": int(active["stipend_recorded"].sum()),
+    }

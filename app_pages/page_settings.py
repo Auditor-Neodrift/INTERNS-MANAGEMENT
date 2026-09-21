@@ -400,6 +400,52 @@ def _display_tab(config: dict) -> None:
         max_chars=4, key="d_symbol",
     )
 
+    ui.section(
+        "Reflection rate report",
+        "Which orders land on the order-ID worklist, and how the checker "
+        "error count on the Alerts tab is counted.",
+    )
+    col_g, col_h = st.columns(2)
+    display["reflection_sla_days"] = col_g.number_input(
+        "List an order once it is unreflected for (days)",
+        value=int(display.get("reflection_sla_days", 15)),
+        min_value=1, max_value=365, step=1, key="d_reflect_sla",
+        help="Counted from the order date: the workbook records no delivery "
+             "date and no review submission date.",
+    )
+    display["reflection_delivered_only"] = col_h.checkbox(
+        "Only list orders Amazon confirmed as delivered",
+        value=bool(display.get("reflection_delivered_only", False)),
+        key="d_reflect_delivered",
+        help="Off by default - a review can be submitted on an order whose "
+             "Amazon status never updated, and those are worth chasing too.",
+    )
+
+    ui.section(
+        "Review incentive",
+        "The stipend promised on the roster, turned into a per-review rate. "
+        "Nothing here is written back to the sheet.",
+    )
+    col_i, col_j = st.columns(2)
+    display["review_target_per_tenure"] = col_i.number_input(
+        "Reviews expected over a full tenure",
+        value=int(display.get("review_target_per_tenure", 25)),
+        min_value=1, max_value=500, step=1, key="d_review_target",
+        help="Stipend divided by this is what one review is worth.",
+    )
+    basis_labels = {"submitted": "Reviews submitted",
+                    "reflected": "Reviews reflected"}
+    current_basis = str(display.get("incentive_basis", "submitted"))
+    display["incentive_basis"] = col_j.selectbox(
+        "Count the incentive against",
+        list(basis_labels), key="d_incentive_basis",
+        index=list(basis_labels).index(current_basis)
+        if current_basis in basis_labels else 0,
+        format_func=lambda k: basis_labels[k],
+        help="Submitted pays for the work done; reflected pays only for "
+             "reviews that actually went live.",
+    )
+
     ui.section("Source workbook")
     st.code(data_mod.sheet_id(), language=None)
     st.caption(

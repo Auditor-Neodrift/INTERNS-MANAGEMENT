@@ -10,10 +10,29 @@ name the branch for each release, and hand you the exact rollback steps.
 """
 from __future__ import annotations
 
-CURRENT = "2.9"
+CURRENT = "3.0"
 
 # Newest first. Keep the last five; older entries can be trimmed.
 VERSIONS: list[dict] = [
+    {
+        "version": "3.0",
+        "name": "Reflection report + review incentives",
+        "branch": "v3.0",
+        "date": "21 Sep 2026",
+        "changes": [
+            "New Reflection rate report on Orders & Audit: every order ID "
+            "whose review was submitted but never reflected past the SLA, with "
+            "ASIN, intern and product, a remark for the reason and a checker "
+            "tick-box at the end.",
+            "Rows the checker has not signed off are counted as a red pill on "
+            "the Interns alerts tab.",
+            "Review incentives worked out from the stipend promised on the "
+            "roster, divided by the 25-review tenure target, shown per intern "
+            "on Payments & Money and summarised on the dashboard.",
+            "Reflection window, delivered-only filter, review target and "
+            "incentive basis are all on the Settings page.",
+        ],
+    },
     {
         "version": "2.9",
         "name": "Glass actually frosts",
